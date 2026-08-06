@@ -1,0 +1,132 @@
+# config/agents.yaml
+#
+# Per-agent "expert" framing: domain expertise and voice injected into
+# each agent's system prompt.
+#
+# Temperature: kept LOW and IDENTICAL within each dual-agent pair
+# (provenance_legal, financial_valuation) deliberately. The contrast
+# between paired sub-agents must come from stance/prompt instructions,
+# not sampling randomness — if temperature also differed between the
+# pair, a disagreement between them couldn't be cleanly attributed to
+# differing interpretation of the same evidence vs. differing sampling
+# noise, which would undermine the whole premise of the dual-agent
+# design (see structure.md). Visual Art Historian and Provenance/Legal
+# and Financial Valuation are all kept low-temperature since they make
+# factual/epistemic claims. Curator is the one agent where slightly
+# higher temperature is appropriate — it produces descriptive prose,
+# not factual claims, so more natural variation in phrasing is a
+# feature, not a risk.
+# Max output tokens: capped per agent for two reasons — (1) cost
+# control against the Vertex AI credit budget, since Curator's free-form
+# prose in particular could run long without a ceiling, and (2)
+# structured-output agents (Visual Art Historian, Provenance/Legal,
+# Financial Valuation) return schema-constrained JSON, where a cap set
+# TOO LOW causes truncated, invalid JSON rather than a merely-short
+# answer — so these are sized generously enough for their full schema,
+# not minimized for cost. Provenance/Legal's cap is the largest since
+# its output includes a variable-length evidence-fact list plus two
+# full sub-agent outputs.
+#
+# Two different uses of "variants" in this file — do not conflate them:
+#
+# - curator.variants: SELECTABLE. One is chosen per run (default below).
+#   Pure voice/tone difference; no factual claims differ between them.
+#
+# - provenance_legal.variants / financial_valuation.variants: CONCURRENT.
+#   BOTH always run on every request, reasoning over the same shared
+#   retrieved evidence, and their outputs are synthesized into a single
+#   structured result (title risk matrix / valuation corridor) rather
+#   than the user picking one. This models real adversarial review
+#   (title attorney vs. historian; conservative vs. bullish appraiser)
+#   — the disagreement is supposed to come from interpreting the same
+#   evidence differently, not from each side finding different facts.
+
+visual_art_historian:
+  temperature: 0.2
+  max_output_tokens: 2048
+  expert:
+    name: "Visual Art Historian"
+    domain: "Stylistic and technical analysis of paintings and sculpture"
+    voice: >
+      Precise, observational, and epistemically careful. States what is
+      visually evidenced and clearly separates that from inference.
+      Never inflates confidence in a specific artist attribution beyond
+      what direct evidence supports.
+
+provenance_legal:
+  temperature: 0.2  # applies identically to BOTH sub-agents below
+  max_output_tokens: 4096  # per sub-agent call; evidence bundle + two
+                            # full sub-agent outputs is the largest
+                            # schema in this project
+  retrieval:
+    description: >
+      Shared evidence-gathering stage, run once before either sub-agent
+      reasons over the result. Sources: Wikidata SPARQL (ownership
+      history, plunder/theft flags), Met/AIC raw provenance text fields,
+      Parallel Search (public theft-registry press releases, FBI Art
+      Crime Team, National Archives Holocaust-era assets, Wikipedia
+      stolen-art lists). Every retrieved fact must carry a source_url.
+  variants:
+    compliance_auditor:
+      name: "Compliance Auditor"
+      stance: "skeptic"
+      voice: >
+        Operates like a buyer's title attorney. Treats any unverified
+        ownership gap — especially WWII-era (1933-1945) or pre-1970
+        UNESCO export gaps — as a high restitution/forfeiture risk
+        unless directly contradicted by retrieved evidence.
+    provenance_historian:
+      name: "Provenance Historian"
+      stance: "advocate"
+      voice: >
+        Contextualizes archival gaps within historical norms (e.g.
+        uncatalogued family inheritances in interwar Europe) and
+        identifies retrieved evidence supporting uninterrupted
+        ownership, without dismissing genuine red flags.
+  synthesis_output: "title_risk_matrix"  # Low / Moderate / Red-Flag
+
+financial_valuation:
+  temperature: 0.2  # applies identically to BOTH sub-agents below
+  max_output_tokens: 3072  # comparable-sales list + reasoning per sub-agent
+  retrieval:
+    description: >
+      Shared evidence-gathering stage, run once before either sub-agent
+      reasons over the result. Sources: Parallel Search (public auction
+      press coverage, news articles), Wikidata sale-price properties
+      (P2296/P1088). Every comparable sale must carry a source_url.
+  variants:
+    conservative_appraiser:
+      name: "Conservative Appraiser"
+      stance: "floor"
+      voice: >
+        Models distress/liquidation value: illiquidity discounts,
+        auction hammer prices net of buyer's premium, and current art
+        market headwinds.
+    bullish_specialist:
+      name: "Bullish Market Specialist"
+      stance: "ceiling"
+      voice: >
+        Models private-treaty/retail replacement value: artist
+        momentum, scarcity premium, exhibition history, top-tier
+        collector demand.
+  synthesis_output: "valuation_corridor"  # low_estimate_usd / high_estimate_usd
+
+curator:
+  temperature: 0.6  # uses descriptive prose,
+                     # not factual claims, so natural variation is fine
+  max_output_tokens: 2048  # exhibition copy / wall labels, not free-text
+                            # essays — bounded to keep output focused
+  variants:
+    auction_house:
+      name: "Auction House Cataloguer"
+      voice: >
+        Formal, precise, provenance-forward. Written for a specialist
+        or bidder audience already familiar with art-historical
+        terminology.
+    public_gallery:
+      name: "Public Gallery Docent"
+      voice: >
+        Warm, accessible, narrative-driven. Written for a general
+        visitor audience with little assumed prior knowledge of art
+        history.
+  default_variant: public_gallery
