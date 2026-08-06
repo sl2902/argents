@@ -60,6 +60,34 @@
   hardcoded in agent modules — keeps `.kiro/steering/tech.md` and the
   actual code from drifting apart.
 
+  ## Dual-agent architecture (Provenance/Legal, Financial Valuation)
+ 
+  These two agents follow a shared pattern, distinct from Visual Art
+  Historian and Curator:
+  
+  1. **Retrieval stage (shared, runs once):** external data sources
+    (Wikidata, Met/AIC, Parallel Search) are queried a single time,
+    producing one evidence bundle. Every retrieved fact carries a
+    `source_url`.
+  2. **Dual reasoning stage (concurrent, `asyncio.gather`):** two
+    sub-agents reason over the same retrieved evidence bundle and
+    produce deliberately contrasting outputs (skeptic vs. advocate;
+    conservative vs. bullish). Both always run — this is not a
+    user-selectable variant.
+  3. **Synthesis:** the two sub-agent outputs are combined into a single
+    structured result (title risk matrix; valuation corridor) — not
+    just concatenated, and not averaged into a single number that
+    erases the disagreement.
+  Retrieval is shared specifically so that disagreement between the two
+  sub-agents comes from interpreting the same evidence differently,
+  not from each side finding different facts — this mirrors how real
+  adversarial review works (a title attorney and a historian look at the
+  same documented gap and disagree about how much it matters).
+  
+  This is different from Curator's `variants`, which are selectable (one
+  chosen per run) rather than concurrent — see `config/agents.yaml` for
+  the distinction.
+
 ## Testing conventions
 
 - Tests mirror the `src/artgents/` structure 1:1 under `tests/`
