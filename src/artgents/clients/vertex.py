@@ -93,6 +93,8 @@ async def generate_structured(
     prompt: str,
     image_parts: list[types.Part],
     response_schema: type[BaseModel],
+    temperature: float | None = None,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
     """Call Gemini via Vertex AI with multimodal input and structured output.
 
@@ -102,6 +104,8 @@ async def generate_structured(
         image_parts: List of image Part objects (from image_part_from_base64).
         response_schema: Pydantic model class used as the JSON schema constraint
             for the model's response.
+        temperature: Sampling temperature (0.0–2.0). If None, uses model default.
+        max_output_tokens: Maximum tokens in the response. If None, uses model default.
 
     Returns:
         Parsed JSON dict matching the response_schema structure.
@@ -116,6 +120,8 @@ async def generate_structured(
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=response_schema,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
     )
 
     start = time.perf_counter()
