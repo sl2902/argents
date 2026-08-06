@@ -101,6 +101,10 @@ consumers:
   and whenever output is low-confidence or an anomaly is flagged in 
   stylistic_authenticity_notes — so a run can be debugged from logs 
   alone without re-running the model.
+- Agent voice/domain framing and model parameters (temperature,
+  max_output_tokens) are loaded from `config/agents.yaml` via the
+  shared config loader — not hardcoded in the agent module — so
+  changing tone or model parameters doesn't require a code change.
 
 ## Out of scope
 

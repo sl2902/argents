@@ -63,6 +63,77 @@ async def analyze_artwork(input: VisualAnalysisInput) -> VisualAnalysisOutput:
     ...
 ```
 
+## Config loading
+ 
+Prompt framing is NOT hardcoded in `art_historian.py` — it's loaded from
+`config/agents.yaml` at import time, via a shared loader (used by every agent, not
+reimplemented per-agent).
+ 
+The loader must match the actual schema shape in `agents.yaml`, which is
+NOT uniform across agents — do not build a single generic
+`get_agent(role, key)` accessor with a silent "fall back to first
+available" default, since that would be wrong for two of the four
+agents:
+
+```python
+# src/artgents/config_loader.py
+ 
+class ExpertConfig(BaseModel):
+    temperature: float
+    max_output_tokens: int
+    name: str
+    domain: str
+    voice: str
+ 
+class SubAgentVariant(BaseModel):
+    name: str
+    stance: str
+    voice: str
+ 
+class DualAgentConfig(BaseModel):
+    temperature: float
+    max_output_tokens: int
+    retrieval_description: str
+    variants: dict[str, SubAgentVariant]  # exactly 2 keys expected
+    synthesis_output: str
+ 
+class SelectableVariant(BaseModel):
+    name: str
+    voice: str
+ 
+class SelectableVariantConfig(BaseModel):
+    temperature: float
+    max_output_tokens: int
+    variants: dict[str, SelectableVariant]
+    default_variant: str
+ 
+def get_expert_config(agent_role: str) -> ExpertConfig:
+    """For single-expert agents (visual_art_historian). Raises if the
+    agent isn't configured this way — no silent fallback."""
+    ...
+ 
+def get_dual_agent_config(agent_role: str) -> DualAgentConfig:
+    """For concurrent dual-agent pairs (provenance_legal,
+    financial_valuation). Raises if variants != 2 keys — a pair with a
+    missing side is a config error, not something to silently default
+    around."""
+    ...
+ 
+def get_selectable_variant_config(
+    agent_role: str, variant_key: str | None = None
+) -> SelectableVariantConfig:
+    """For selectable-variant agents (curator). Falls back to
+    default_variant from the YAML — NOT 'first available' — only when
+    variant_key is None; an explicitly invalid variant_key still
+    raises."""
+    ...
+```
+ 
+`art_historian.py` calls `get_expert_config("visual_art_historian")` and
+uses `.temperature`, `.max_output_tokens`, `.voice`, `.domain` to build
+its prompt — it does not read the YAML file directly.
+
+
 ## Model call
 
 - Client: `src/artgents/clients/vertex.py` (shared across agents)
