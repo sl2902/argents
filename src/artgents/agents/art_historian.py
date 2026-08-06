@@ -147,16 +147,22 @@ and evidence-based. For search_keywords, provide 5-10 terms optimized for queryi
 art databases (Wikidata, museum APIs, auction records)."""
 
 
-def _build_blind_discovery_prompt() -> str:
+def _build_blind_discovery_prompt(voice: str, domain: str) -> str:
     """Build prompt for blind discovery mode (no metadata supplied).
 
     The model must identify visual characteristics from the image alone,
     without any prior claims to anchor on.
+
+    Args:
+        voice: Expert voice description from config.
+        domain: Expert domain description from config.
     """
     return f"""\
-You are an expert art historian performing a visual analysis of a physical artwork
+You are a {domain} expert performing a visual analysis of a physical artwork
 from photographs alone. No metadata about this work has been provided — you must
 rely entirely on visual evidence.
+
+Your voice and epistemic stance: {voice}
 
 Your task:
 1. Analyze the composition, technique, palette, brushwork, and spatial arrangement.
@@ -176,6 +182,8 @@ Your task:
 
 def _build_verification_prompt(
     *,
+    voice: str,
+    domain: str,
     known_artist: str | None = None,
     known_title: str | None = None,
     known_period: str | None = None,
@@ -185,6 +193,14 @@ def _build_verification_prompt(
 
     The model must explicitly assess whether visual evidence is CONSISTENT
     with the claimed metadata, and flag anomalies rather than echoing claims.
+
+    Args:
+        voice: Expert voice description from config.
+        domain: Expert domain description from config.
+        known_artist: Claimed artist, if available.
+        known_title: Claimed title, if available.
+        known_period: Claimed period, if available.
+        medium: Claimed medium, if available.
     """
     claims: list[str] = []
     if known_artist:
@@ -199,10 +215,12 @@ def _build_verification_prompt(
     claims_block = "\n".join(claims)
 
     return f"""\
-You are an expert art historian performing a VERIFICATION analysis of a physical
+You are a {domain} expert performing a VERIFICATION analysis of a physical
 artwork. The following metadata has been claimed about this work:
 
 {claims_block}
+
+Your voice and epistemic stance: {voice}
 
 Your task is NOT to simply confirm these claims. Instead:
 1. Analyze the visual evidence in the image independently.
@@ -233,6 +251,8 @@ is far more valuable than a false confirmation.
 def build_prompt(input_data: "VisualAnalysisInput") -> tuple[str, str]:
     """Select and build the appropriate prompt branch.
 
+    Loads voice/domain from config/agents.yaml via the shared config loader.
+
     Args:
         input_data: The analysis input (image + optional metadata).
 
@@ -240,6 +260,10 @@ def build_prompt(input_data: "VisualAnalysisInput") -> tuple[str, str]:
         A tuple of (prompt_text, branch_name) where branch_name is one of
         "blind_discovery" or "verification".
     """
+    from artgents.config_loader import get_expert_config
+
+    config = get_expert_config("visual_art_historian")
+
     has_metadata = any([
         input_data.known_artist,
         input_data.known_title,
@@ -249,6 +273,8 @@ def build_prompt(input_data: "VisualAnalysisInput") -> tuple[str, str]:
 
     if has_metadata:
         prompt = _build_verification_prompt(
+            voice=config.voice,
+            domain=config.domain,
             known_artist=input_data.known_artist,
             known_title=input_data.known_title,
             known_period=input_data.known_period,
@@ -256,7 +282,10 @@ def build_prompt(input_data: "VisualAnalysisInput") -> tuple[str, str]:
         )
         return prompt, "verification"
     else:
-        prompt = _build_blind_discovery_prompt()
+        prompt = _build_blind_discovery_prompt(
+            voice=config.voice,
+            domain=config.domain,
+        )
         return prompt, "blind_discovery"
 
 
@@ -398,6 +427,10 @@ async def analyze_artwork(input_data: VisualAnalysisInput) -> VisualAnalysisOutp
         image_part_from_base64,
     )
     from artgents.config import settings
+    from artgents.config_loader import get_expert_config
+
+    # Load agent config (temperature, max_output_tokens, voice, domain)
+    agent_config = get_expert_config("visual_art_historian")
 
     # --- 1. Input validation (pre-call, avoids wasted API calls) ---
     validated_images = _validate_images(input_data.images)
@@ -423,6 +456,8 @@ async def analyze_artwork(input_data: VisualAnalysisInput) -> VisualAnalysisOutp
         prompt=prompt,
         image_parts=image_parts,
         response_schema=VisualAnalysisOutput,
+        temperature=agent_config.temperature,
+        max_output_tokens=agent_config.max_output_tokens,
     )
 
     # --- 5. Parse and validate response ---
