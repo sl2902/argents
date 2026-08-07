@@ -24,12 +24,12 @@ async def health():
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
-    files: list[UploadFile] = File(...),
-    known_title: str | None = Form(default=None),
-    known_artist: str | None = Form(default=None),
-    known_period: str | None = Form(default=None),
-    medium: str | None = Form(default=None),
-    variant_key: str | None = Form(default=None),
+    files: list[UploadFile] = File(..., description="Image file(s) of the artwork"),
+    known_title: str | None = Form(default=None, description="Known title, if available"),
+    known_artist: str | None = Form(default=None, description="Known artist, if available"),
+    known_period: str | None = Form(default=None, description="Known period, if available"),
+    medium: str | None = Form(default=None, description="Known medium, if available"),
+    variant_key: str | None = Form(default=None, description="Curator voice variant (auction_house or public_gallery)"),
 ):
     # Convert uploaded files to base64
     images = []
