@@ -24,6 +24,11 @@ from artgents.agents.art_historian import (
     VisualAnalysisOutput,
     analyze_artwork,
 )
+from artgents.agents.provenance_legal import (
+    TitleRiskMatrix,
+    assess_provenance,
+)
+from artgents.clients.parallel import CreditExhaustedError
 from artgents.clients.vertex import VertexCallError
 
 
@@ -36,7 +41,7 @@ class PipelineResult:
     """
 
     visual_analysis: VisualAnalysisOutput | None = None
-    provenance_legal: Any = None  # TODO: type once Provenance/Legal spec exists
+    provenance_legal: TitleRiskMatrix | None = None
     financial_valuation: Any = None  # TODO: type once Financial Valuation spec exists
     curator_output: Any = None  # TODO: type once Curator spec exists
     errors: list[str] = field(default_factory=list)
@@ -75,12 +80,25 @@ async def run_pipeline(input_data: VisualAnalysisInput) -> PipelineResult:
         return result
 
     # --- Stage 2: Provenance/Legal ---
-    # TODO: Implement once provenance_legal agent spec exists.
-    # Will consume result.visual_analysis.search_keys
-    logger.info(
-        "Pipeline stage 2: Provenance/Legal (not yet implemented — "
-        "search_keys available for handoff)"
-    )
+    logger.info("Pipeline stage 2: Provenance/Legal")
+    try:
+        result.provenance_legal = await assess_provenance(
+            result.visual_analysis.search_keys
+        )
+        logger.info(
+            "Stage 2 complete: requires_human_review={}",
+            result.provenance_legal.requires_human_review,
+        )
+    except CreditExhaustedError as exc:
+        logger.error(
+            "Pipeline stage 2: Parallel Search credits exhausted — {}", str(exc)
+        )
+        result.errors.append(f"Provenance/Legal: {exc}")
+        # Continue — partial pipeline results are still useful
+    except VertexCallError as exc:
+        logger.error("Pipeline stage 2 failed: Vertex AI error — {}", str(exc))
+        result.errors.append(f"Provenance/Legal: {exc}")
+        # Continue — stage 3/4 can still run with whatever is available
 
     # --- Stage 3: Financial Valuation ---
     # TODO: Implement once financial_valuation agent spec exists.

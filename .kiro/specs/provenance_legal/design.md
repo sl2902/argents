@@ -1,5 +1,65 @@
 # Design: Provenance & Legal Agent
 
+## Evidence scope — preventing cross-object contamination
+
+**This is the central correctness concern for this agent.** When
+`search_keys.work_title` is `None` (no specific title known — the
+common case for blind-discovery input), Wikidata and AIC queries can
+only search by artist name, which returns facts about MULTIPLE
+DISTINCT works by that artist, not one object's provenance. Left
+ungrouped, these get reasoned over as if they described a single
+continuous ownership chain — this was observed in testing: a Wikidata
+entity's real Hermann Göring ownership record and an unrelated 2024 FBI
+restitution news story about a *different* Monet pastel were merged by
+the sub-agents into one fabricated narrative about "the artwork."
+
+**Fix, two parts:**
+
+1. `RetrievedFact` gains a `source_entity_id: str | None` field —
+   the Wikidata QID, AIC object ID, or equivalent stable identifier
+   the fact came from, where available. Facts from a search result
+   or general web page with no single identifiable object (most
+   Parallel Search hits) get `None`.
+2. `EvidenceBundle` gains `evidence_scope: Literal["specific_object",
+   "artist_general"]`, set based on whether `work_title` was
+   available AND a Wikidata/AIC query successfully matched to a
+   single entity:
+   - `"specific_object"`: a title was known and matched to one
+     entity — facts sharing that `source_entity_id` can be reasoned
+     over as one object's history.
+   - `"artist_general"`: no title, or no confident single-entity
+     match — facts may span multiple works by the artist. Both
+     sub-agents MUST be explicitly told this in their prompt and
+     MUST NOT synthesize a single-object ownership narrative from
+     facts with different `source_entity_id` values. Any claim in
+     `reasoning`/`contextual_notes` must be scoped to "general risk
+     context for this artist" language, not "the artwork's history."
+
+`risk_level` in `"artist_general"` mode should reflect genuine
+inability to verify the specific object — e.g. "moderate" framed as
+"cannot confirm this specific piece's history; artist has documented
+looting-era risk in general" — not a confident "red_flag" phrased as
+if it's a finding about the specific artwork, unless there is truly no
+alternative (see acceptance criteria in requirements.md).
+
+**Query bounding:** `WikidataClient` must apply a default `LIMIT` to
+any query that doesn't explicitly specify one — not just the
+artist-driven query in this agent. Without one, a prolific artist (e.g.
+Claude Monet, with hundreds of documented works) produces a query
+returning triples across potentially hundreds of distinct entities,
+which is slow and prone to timing out — observed in testing: a
+30-second timeout on an unbounded artist-only query. A client-level
+default (rather than hardcoding a LIMIT into this one query string)
+protects any future caller of `WikidataClient` that queries without
+explicitly bounding results, not just this agent's current query
+shape. This is also consistent with `evidence_scope: "artist_general"`
+mode's own definition — since that mode already treats results as
+general risk context rather than a complete/authoritative record for
+one object, a bounded, representative sample is correctness-
+appropriate, not a compromise. A reasonable starting default is 50,
+overridable per-call where a caller has a specific reason to set a
+different bound.
+
 ## Architecture
 
 ```
@@ -43,10 +103,22 @@ class RetrievedFact(BaseModel):
     claim: str
     source_url: str
     source_type: Literal["wikidata", "met", "aic", "parallel_search"]
+    source_entity_id: str | None  # Wikidata QID, AIC object ID, etc.
+                                    # None for facts with no single
+                                    # identifiable object (most
+                                    # Parallel Search hits)
 
 class EvidenceBundle(BaseModel):
     retrieved_facts: list[RetrievedFact]
-    query_search_keys: ProvenanceSearchKeys  # what was searched for, for traceability
+    query_search_keys: ProvenanceSearchKeys
+    evidence_scope: Literal["specific_object", "artist_general"]
+    rejected_fact_count: int = 0  # facts dropped due to malformed
+                                   # source_url or other validation
+                                   # failure during retrieval — surfaces
+                                   # silent data loss (e.g. transport-
+                                   # level corruption) in the output
+                                   # itself, not just in logs a judge
+                                   # won't see
 
 class ComplianceAuditorOutput(BaseModel):
     identified_gaps: list[OwnershipGap]  # window, is_high_risk_period: bool
@@ -55,7 +127,10 @@ class ComplianceAuditorOutput(BaseModel):
 
 class ProvenanceHistorianOutput(BaseModel):
     contextual_notes: str
-    supporting_evidence: list[RetrievedFact]
+    cited_evidence: list[RetrievedFact]  # every fact referenced in
+                                          # contextual_notes, in EITHER
+                                          # direction — not limited to
+                                          # exculpatory evidence
     risk_level: Literal["low", "moderate", "red_flag"]
 
 class TitleRiskMatrix(BaseModel):
@@ -110,6 +185,24 @@ terms for known theft/plunder registries, e.g.:
 Results are parsed into `RetrievedFact` entries with `source_type:
 "parallel_search"` and the actual result URL — never a claim without
 a URL.
+
+**Input robustness:** before building the query, filter
+`search_keywords` to drop empty/placeholder strings. If the remaining
+identifying terms are insufficient (no usable title or artist term),
+skip the Parallel Search call entirely for that request rather than
+querying on bare generic terms alone — this was observed to produce
+irrelevant results (e.g. unrelated FBI press pages, unrelated museum
+provenance records for different objects) when tested against a
+request with weak/empty search keys. Log this skip at INFO, don't
+silently proceed with a degenerate query.
+
+**Relevance filtering:** after retrieval, drop any Parallel Search
+result that shares no keyword overlap with the artwork's own
+identifying terms (title, artist, or non-empty search keywords) before
+adding it to `retrieved_facts`. A simple keyword-overlap check is
+sufficient here — this doesn't need to be another model call, just a
+filter on the retrieval layer, consistent with `synthesize_title_risk()`
+also being kept as plain logic rather than an LLM call.
 
 Cost note: this is the primary Parallel Search consumer in the
 pipeline (Financial Valuation will be the second, in its own retrieval

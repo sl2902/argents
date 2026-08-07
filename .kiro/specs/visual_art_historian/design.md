@@ -44,6 +44,13 @@ class VisualAnalysisInput(BaseModel):
     medium: str | None = None
 
 class ProvenanceSearchKeys(BaseModel):
+    work_title: str | None  # ONLY populated from user-supplied
+                             # known_title, or text legibly visible in
+                             # the image (e.g. a label, plaque,
+                             # inscription). NEVER inferred or guessed
+                             # from style/subject matter alone — a
+                             # missing title must stay None, not become
+                             # a fabricated placeholder.
     primary_artist_attribution: str
     probable_creation_window: str
     style_and_movement: str

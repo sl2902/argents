@@ -74,8 +74,16 @@ This agent is not a single reasoning step. It has two stages:
 **Provenance Historian sub-output:**
 - `contextual_notes`: string — historical context for any identified
   gaps (does NOT dismiss red flags, only contextualizes them)
-- `supporting_evidence`: list of retrieved facts supporting
-  uninterrupted or well-documented ownership, if any exist
+- `cited_evidence`: list of every retrieved fact this sub-agent's
+  reasoning actually relies on or references in `contextual_notes` —
+  in EITHER direction. This is NOT limited to facts supporting clean/
+  uninterrupted ownership; if the Historian's reasoning discusses a
+  risk-relevant fact (e.g. a documented wartime-era owner), that fact
+  must appear here too. A field that only captured exculpatory
+  evidence would create a mismatch between what's cited in prose and
+  what's listed as evidence — this field is symmetric with what
+  `contextual_notes` actually references, not a one-directional
+  "evidence for a clean narrative" list.
 - `risk_level`: "low" | "moderate" | "red_flag" (independently assessed
   — may differ from Compliance Auditor's)
 
@@ -103,14 +111,49 @@ This agent is not a single reasoning step. It has two stages:
 - Given an artwork with no gaps and clean, well-documented ownership
   history, both sub-agents converge on `risk_level: "low"` and
   `requires_human_review` is false.
+- Given a request with no known `work_title` and an artist with many
+  documented works (e.g. Claude Monet), `evidence_scope` is set to
+  `"artist_general"`, and neither sub-agent's reasoning treats facts
+  from different `source_entity_id` values as describing one
+  continuous object history — each sub-agent's output explicitly
+  frames its assessment as general artist-level risk context, not a
+  specific-object finding, when in this mode.
+- Given a request with a known `work_title` that matches a single
+  Wikidata/AIC entity, `evidence_scope` is `"specific_object"` and
+  facts sharing that entity's `source_entity_id` may be reasoned over
+  as one object's ownership history.
+- A `red_flag` risk_level in `"artist_general"` mode is only used when
+  there is truly no way to express appropriate uncertainty otherwise
+  (e.g. every documented work by this artist has a plunder history) —
+  the default framing for unmatched artist-general evidence should
+  favor "moderate, cannot confirm this specific piece" over a
+  confident red_flag phrased as if it's a specific-object finding.
 - Neither sub-agent asserts a theft/plunder flag without a citable
   `source_url` in `retrieved_facts` backing it.
+- Any fact dropped during retrieval due to a malformed/invalid
+  `source_url` (or other validation failure) increments
+  `EvidenceBundle.rejected_fact_count` and is logged at WARNING — data
+  loss during retrieval is visible in the output itself, not only in
+  logs.
 - Core retrieval logic and both sub-agent reasoning paths are covered
   by unit tests with mocked clients (Wikidata, Met/AIC, Parallel
   Search) — not exercised only manually.
 - The agent logs (via `logging_config.py`, not `print()`): retrieval
   call latency/failures per source, which sub-agent risk levels were
   produced, and whenever `requires_human_review` is set to true.
+- Parallel Search query construction is robust against sparse input:
+  empty or placeholder strings in `search_keywords` are filtered out
+  before building a query, and if too little identifying information
+  remains (e.g. no usable title/artist term at all) the agent skips the
+  Parallel Search call for that request rather than searching on bare
+  generic terms like "Nazi plunder" alone — a query with no
+  artwork-specific anchor produces irrelevant results, which is worse
+  than no results.
+- Parallel Search results are filtered for basic relevance before being
+  added to `retrieved_facts` — a result sharing no keyword overlap with
+  the artwork's identifying terms (title, artist, or search keywords)
+  is dropped rather than included as if it were evidence about this
+  specific work.
 
 ## Out of scope
 

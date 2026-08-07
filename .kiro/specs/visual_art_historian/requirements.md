@@ -82,7 +82,6 @@ consumers:
 - `primary_artist_attribution` is never stated as unqualified fact unless
   a legible signature is detected; otherwise it is phrased as an
   attribution/hypothesis (e.g. "Attributed to...").
-- Output is valid against the agent's Pydantic schema 100% of the time.
 - Confidence is calibrated differently for different claim types:
   identifying a general period/style/movement (e.g. "International
   Gothic") may reasonably carry high confidence when visual evidence is
@@ -92,6 +91,12 @@ consumers:
   follower attribution is inherently contestable scholarship — not
   treated as equally certain just because the stylistic reasoning behind
   it is well-articulated.
+- `search_keys.work_title` is `None` unless the title came from
+  user-supplied `known_title` or text legibly visible in the image
+  (label, plaque, inscription) — it is never a stylistic guess.
+  Downstream agents rely on this field being trustworthy precisely
+  because it's either genuinely known or genuinely absent, never a
+  best-effort fabrication.
 - Output is valid against the agent's Pydantic schema 100% of the time.
 - Core parsing/validation logic, both prompt branches (blind discovery
   and verification), and invalid-image handling are covered by unit
