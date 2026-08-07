@@ -34,6 +34,6 @@
        against live Vertex AI
 - [ ] 12. Wire `curate()` into `pipeline.py` as the final stage,
        consuming all three upstream agents' outputs
-- [ ] 13. Confirm the full pipeline (Visual Art Historian →
-       Provenance/Legal + Financial Valuation → Curator) runs
+- [ ] 13. Confirm the full pipeline (Visual Art Historian ->
+       Provenance/Legal + Financial Valuation -> Curator) runs
        end-to-end without manual intervention between stages
