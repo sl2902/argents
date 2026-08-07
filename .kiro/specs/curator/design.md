@@ -122,6 +122,28 @@ same principle validated repeatedly in Visual Art Historian and
 Provenance/Legal testing: fluent prose should not imply more certainty
 than the underlying finding actually has.
 
+## Category precision — do not conflate provenance risk with authenticity
+
+Testing surfaced a real instance of category-bleed: `auction_house`
+wall label copy described a `TitleRiskMatrix` disagreement (a
+provenance/ownership-gap finding) as "authenticity and title
+challenges" — but no upstream agent raised any authenticity concern in
+that run. `TitleRiskMatrix` findings are about ownership history and
+documented gaps; they are NOT a statement about whether the work is
+genuinely by the attributed artist. Authenticity/attribution confidence
+is exclusively Visual Art Historian's domain
+(`stylistic_authenticity_notes`, and the hedge on
+`primary_artist_attribution`).
+
+The prompt must explicitly instruct the model: when describing
+`TitleRiskMatrix` findings, use "provenance" or "title" language only
+— never "authenticity," "genuine," "attribution risk," or similar terms
+that belong to Visual Art Historian's findings, unless Visual Art
+Historian's own output actually raised such a concern. Do not rely on
+the model naturally keeping these separate — this conflation happened
+even with a functioning, well-tested model call, so it needs an
+explicit guard.
+
 ## Config loading
 
 Uses `config_loader.get_selectable_variant_config("curator",
@@ -139,9 +161,9 @@ variant_key)` — falls back to YAML `default_variant`
 
 ## Error handling
 
-- Missing/malformed upstream input (e.g. a required field absent) →
+- Missing/malformed upstream input (e.g. a required field absent) ->
   typed validation error before any model call, not a wasted API call
-- Vertex AI call failure → propagate typed error to `pipeline.py`
+- Vertex AI call failure -> propagate typed error to `pipeline.py`
 
 ## Testing approach
 

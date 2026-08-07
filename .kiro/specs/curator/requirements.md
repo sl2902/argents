@@ -103,6 +103,19 @@ to suppress a real flag raised by an upstream agent.
   that aren't traceable to one of the three upstream agents' outputs —
   Curator synthesizes and narrates, it does not introduce new
   attributions, dates, or provenance facts of its own.
+- Curator does not conflate the upstream agents' distinct risk
+  categories. `TitleRiskMatrix` findings are about ownership history/
+  provenance gaps — they must be described as "provenance" or "title"
+  concerns, never as "authenticity" concerns. Authenticity/attribution
+  confidence is Visual Art Historian's domain
+  (`stylistic_authenticity_notes`, hedge language on
+  `primary_artist_attribution`) and is a separate claim from whether
+  the ownership chain has gaps. Testing surfaced exactly this
+  conflation ("authenticity and title challenges" used to describe a
+  disagreement that was only ever about provenance/title risk, with no
+  authenticity concern raised by any upstream agent) — the prompt must
+  guard against it explicitly, not rely on the model naturally keeping
+  these separate.
 - `variant_used` accurately reflects which config variant was actually
   applied (explicit `variant_key` if provided, else the YAML default).
 - Core synthesis logic and the disclosure-floor enforcement are covered
