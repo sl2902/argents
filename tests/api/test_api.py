@@ -452,3 +452,32 @@ class TestErrorHandling:
         )
 
         assert response.status_code == 502
+
+
+class TestNotArtworkError:
+    """Test that NotArtworkError maps to 422."""
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch):
+        monkeypatch.setenv("GCP_PROJECT", "test-project")
+
+    def test_not_artwork_returns_422(self):
+        from unittest.mock import AsyncMock, patch
+        from artgents.pipeline import NotArtworkError
+
+        jpeg_content = b"\xff\xd8\xff\xe0" + b"\x00" * 100
+
+        with patch(
+            "artgents.api.routes.run_pipeline",
+            new_callable=AsyncMock,
+            side_effect=NotArtworkError("Image shows a document, not an artwork"),
+        ):
+            response = client.post(
+                "/api/analyze",
+                files=[("files", ("test.jpg", jpeg_content, "image/jpeg"))],
+            )
+
+        assert response.status_code == 422
+        data = response.json()
+        assert "document, not an artwork" in data["error"]
+        assert data["stage"] == "visual_art_historian"

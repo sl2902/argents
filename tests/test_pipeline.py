@@ -37,6 +37,8 @@ def sample_input() -> PipelineInput:
 def mock_visual_output():
     """Mocked VisualAnalysisOutput."""
     output = MagicMock()
+    output.is_artwork = True
+    output.is_artwork_reasoning = "Image shows a painting"
     output.search_keys.primary_artist_attribution = "Attributed to Claude Monet"
     output.search_keys.work_title = None
     output.search_keys.probable_creation_window = "1900–1910"
@@ -399,3 +401,41 @@ class TestErrorPropagation:
 
         with pytest.raises(VertexCallError, match="Curator model error"):
             await run_pipeline(sample_input)
+
+
+class TestNotArtworkGate:
+    """Test that is_artwork=False stops the pipeline immediately."""
+
+    @pytest.fixture(autouse=True)
+    def _set_env(self, monkeypatch):
+        monkeypatch.setenv("GCP_PROJECT", "test-project")
+
+    @patch("artgents.pipeline.curate", new_callable=AsyncMock)
+    @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
+    @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
+    @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
+    async def test_not_artwork_raises_and_skips_downstream(
+        self,
+        mock_analyze,
+        mock_provenance,
+        mock_valuation,
+        mock_curate,
+        sample_input,
+    ):
+        """If is_artwork=False, NotArtworkError raised and no downstream agents called."""
+        from artgents.pipeline import NotArtworkError
+
+        not_artwork_output = MagicMock()
+        not_artwork_output.is_artwork = False
+        not_artwork_output.is_artwork_reasoning = "Image shows a person, not an artwork"
+        not_artwork_output.search_keys.primary_artist_attribution = "Unknown"
+
+        mock_analyze.return_value = not_artwork_output
+
+        with pytest.raises(NotArtworkError, match="person, not an artwork"):
+            await run_pipeline(sample_input)
+
+        # Downstream agents were NEVER called
+        mock_provenance.assert_not_called()
+        mock_valuation.assert_not_called()
+        mock_curate.assert_not_called()

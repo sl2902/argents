@@ -37,6 +37,8 @@ VALID_PNG_B64 = base64.b64encode(VALID_PNG_BYTES).decode()
 
 # A well-formed mock response simulating Vertex AI structured output
 MOCK_BLIND_RESPONSE = {
+    "is_artwork": True,
+    "is_artwork_reasoning": "Image shows a framed painting with visible brushwork and canvas texture.",
     "search_keys": {
         "primary_artist_attribution": "Attributed to Claude Monet",
         "probable_creation_window": "1872–1880",
@@ -66,6 +68,8 @@ MOCK_BLIND_RESPONSE = {
 }
 
 MOCK_VERIFICATION_RESPONSE = {
+    "is_artwork": True,
+    "is_artwork_reasoning": "Image depicts a Cubist painting on canvas.",
     "search_keys": {
         "primary_artist_attribution": "Attributed to Georges Braque",
         "probable_creation_window": "1910–1914",
@@ -93,6 +97,8 @@ MOCK_VERIFICATION_RESPONSE = {
 }
 
 MOCK_LOW_CONFIDENCE_RESPONSE = {
+    "is_artwork": True,
+    "is_artwork_reasoning": "Image appears to show a painting, though quality is poor.",
     "search_keys": {
         "primary_artist_attribution": "Unknown artist",
         "probable_creation_window": "19th–20th century",
@@ -113,6 +119,8 @@ MOCK_LOW_CONFIDENCE_RESPONSE = {
 }
 
 MOCK_ANOMALY_RESPONSE = {
+    "is_artwork": True,
+    "is_artwork_reasoning": "Image shows a painting on canvas with visible stretcher bars.",
     "search_keys": {
         "primary_artist_attribution": "Attributed to Pablo Picasso",
         "probable_creation_window": "1930–1940",
@@ -530,6 +538,8 @@ class TestAnalyzeArtworkMocked:
         # Simulates the regression: model gives high confidence attribution
         # to a specific named artist with no detected signatures
         mock_response_data = {
+            "is_artwork": True,
+            "is_artwork_reasoning": "Image shows a gold ground panel painting.",
             "search_keys": {
                 "primary_artist_attribution": "Attributed to Lorenzo Monaco",
                 "probable_creation_window": "1405–1410",

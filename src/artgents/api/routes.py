@@ -12,7 +12,7 @@ from artgents.agents.art_historian import InvalidImageError
 from artgents.api.response_models import AnalyzeResponse, build_analyze_response
 from artgents.clients.parallel import CreditExhaustedError
 from artgents.clients.vertex import VertexCallError
-from artgents.pipeline import PipelineInput, run_pipeline
+from artgents.pipeline import NotArtworkError, PipelineInput, run_pipeline
 
 router = APIRouter(prefix="/api")
 
@@ -57,6 +57,11 @@ async def analyze(
     except InvalidImageError as exc:
         return JSONResponse(
             status_code=400,
+            content={"error": str(exc), "stage": "visual_art_historian"},
+        )
+    except NotArtworkError as exc:
+        return JSONResponse(
+            status_code=422,
             content={"error": str(exc), "stage": "visual_art_historian"},
         )
     except CreditExhaustedError as exc:

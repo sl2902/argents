@@ -18,6 +18,15 @@ from dataclasses import dataclass
 from loguru import logger
 from pydantic import BaseModel, Field
 
+
+class NotArtworkError(Exception):
+    """Raised when the uploaded image is not a physical artwork.
+
+    The pipeline stops immediately — no downstream agents are invoked.
+    """
+
+    pass
+
 from artgents.agents.art_historian import (
     VisualAnalysisInput,
     VisualAnalysisOutput,
@@ -110,6 +119,7 @@ async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
 
     Raises:
         InvalidImageError: If the image is invalid (from Visual Art Historian).
+        NotArtworkError: If the image is not a physical artwork.
         VertexCallError: If any Vertex AI call fails.
         CreditExhaustedError: If Parallel Search credits are exhausted.
     """
@@ -134,6 +144,14 @@ async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
         visual_analysis.search_keys.primary_artist_attribution,
         visual_analysis_ms,
     )
+
+    # --- Gate check: is this actually an artwork? ---
+    if not visual_analysis.is_artwork:
+        logger.warning(
+            "Pipeline stopped: image is not an artwork — {}",
+            visual_analysis.is_artwork_reasoning,
+        )
+        raise NotArtworkError(visual_analysis.is_artwork_reasoning)
 
     # --- Stage 2: Provenance/Legal + Financial Valuation (concurrent) ---
     logger.info("Stage 2: Provenance/Legal + Financial Valuation — starting (concurrent)")

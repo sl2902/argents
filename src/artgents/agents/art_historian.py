@@ -95,6 +95,23 @@ class VisualAnalysisOutput(BaseModel):
     - composition/condition/authenticity fields: consumed by Curator agent (runs last)
     """
 
+    # Gate check: is this actually an artwork?
+    is_artwork: bool = Field(
+        ...,
+        description=(
+            "Whether the image depicts a physical artwork (painting, sculpture, etc.). "
+            "Must be decided independently of style/attribution confidence."
+        ),
+    )
+    is_artwork_reasoning: str = Field(
+        ...,
+        description=(
+            "Brief explanation of why the image is or is not considered an artwork. "
+            "E.g. 'Image shows a framed oil painting on canvas' or "
+            "'Image shows a person/document/landscape photo, not an artwork'."
+        ),
+    )
+
     # Downstream Handoff 1: Provenance/Legal agent (consumed first)
     search_keys: ProvenanceSearchKeys
 
@@ -153,6 +170,16 @@ _OUTPUT_INSTRUCTIONS = """\
 Return your analysis as structured JSON matching the required schema. Be specific
 and evidence-based. For search_keywords, provide 5-10 terms optimized for querying
 art databases (Wikidata, museum APIs, auction records).
+
+ARTWORK GATE (decide this FIRST, before any other analysis):
+- `is_artwork`: Is the photographed subject a physical artwork (painting, sculpture,
+  drawing, print, etc.)? Answer true/false.
+- This is NOT about confidence in attribution or style — a genuine but obscure or
+  poorly photographed artwork is still an artwork (true). A clear photo of a person,
+  document, landscape photo, or random object is not an artwork (false).
+- `is_artwork_reasoning`: Brief explanation of your decision.
+- If is_artwork is false, still fill in all other fields with best-effort values
+  (the schema requires them), but downstream systems will not use them.
 
 CRITICAL: For `work_title` in search_keys:
 - Set it ONLY if you have a genuine title from: (1) the user-supplied known_title
