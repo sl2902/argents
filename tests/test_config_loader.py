@@ -37,7 +37,7 @@ class TestGetExpertConfig:
         assert config.domain == "Stylistic and technical analysis of paintings and sculpture"
         assert "epistemically careful" in config.voice
         assert config.temperature == 0.2
-        assert config.max_output_tokens == 2048
+        assert config.max_output_tokens == 4096
 
     def test_wrong_accessor_for_dual_agent_raises(self):
         """get_expert_config() on a dual-agent role raises ValueError."""

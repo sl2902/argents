@@ -43,7 +43,7 @@
 
 visual_art_historian:
   temperature: 0.2
-  max_output_tokens: 2048
+  max_output_tokens: 4096
   expert:
     name: "Visual Art Historian"
     domain: "Stylistic and technical analysis of paintings and sculpture"

@@ -1,24 +1,23 @@
-"""Artgents pipeline — sequences agent calls in the correct order.
+"""Artgents pipeline — single-call orchestration of all four agents.
 
-Execution order (sequential, not fan-out):
-1. Visual Art Historian → produces VisualAnalysisOutput
-   - search_keys available for stage 2
-2. Provenance/Legal agent → uses search_keys to query external sources
-3. Financial Valuation agent → uses provenance + visual data
-4. Curator agent → synthesizes all prior agent outputs into exhibition copy
+Execution order:
+1. Visual Art Historian → VisualAnalysisOutput (search_keys)
+2. Provenance/Legal + Financial Valuation → CONCURRENT via asyncio.gather
+3. Curator → CuratorOutput (final synthesis)
 
-This module is the ONLY place that sequences agent calls. Agents do not
-call each other directly.
+Errors propagate naturally — no try/except suppression. If any stage
+fails outright, the whole pipeline fails with a clear, typed error.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import asyncio
+import time
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from artgents.agents.art_historian import (
-    InvalidImageError,
     VisualAnalysisInput,
     VisualAnalysisOutput,
     analyze_artwork,
@@ -36,124 +35,122 @@ from artgents.agents.provenance_legal import (
     TitleRiskMatrix,
     assess_provenance,
 )
-from artgents.clients.parallel import CreditExhaustedError
-from artgents.clients.vertex import VertexCallError
 
 
-@dataclass
-class PipelineResult:
-    """Accumulated results from a pipeline run.
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
 
-    Each agent's output is stored separately so downstream consumers
-    can access exactly what they need.
+
+class PipelineInput(BaseModel):
+    """Input for the full Artgents pipeline."""
+
+    images: list[str] = Field(
+        ..., min_length=1, description="Base64-encoded image(s) of the artwork"
+    )
+    known_title: str | None = Field(default=None, description="Known title, if available")
+    known_artist: str | None = Field(default=None, description="Known artist, if available")
+    known_period: str | None = Field(default=None, description="Known period, if available")
+    medium: str | None = Field(default=None, description="Known medium, if available")
+    variant_key: str | None = Field(
+        default=None, description="Curator voice variant (None → YAML default)"
+    )
+
+
+class PipelineResult(BaseModel):
+    """Complete result from a full pipeline run.
+
+    Exposes all intermediate agent outputs alongside the final CuratorOutput,
+    so inspectors can see the actual evidence/reasoning behind the narrative.
     """
 
-    visual_analysis: VisualAnalysisOutput | None = None
-    provenance_legal: TitleRiskMatrix | None = None
-    financial_valuation: FinancialValuationResult | None = None
-    curator_output: CuratorOutput | None = None
-    errors: list[str] = field(default_factory=list)
+    model_config = {"arbitrary_types_allowed": True}
+
+    visual_analysis: VisualAnalysisOutput
+    title_risk: TitleRiskMatrix
+    valuation: FinancialValuationResult
+    curator_output: CuratorOutput
 
 
-async def run_pipeline(input_data: VisualAnalysisInput) -> PipelineResult:
-    """Execute the full Artgents pipeline.
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
 
-    Runs agents sequentially — each stage depends on the previous stage's
-    output. If an early stage fails, the pipeline records the error and
-    returns partial results.
+
+async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
+    """Execute the full Artgents pipeline end-to-end.
+
+    Stages:
+    1. Visual Art Historian (sequential — required for all downstream stages)
+    2. Provenance/Legal + Financial Valuation (concurrent via asyncio.gather)
+    3. Curator (sequential — requires all prior outputs)
+
+    Errors propagate naturally — no suppression. If any stage fails,
+    the pipeline fails with a clear, typed error.
 
     Args:
-        input_data: Image (base64) and optional metadata for the artwork.
+        input_data: Image(s) + optional metadata + variant selection.
 
     Returns:
-        PipelineResult with each agent's output (or None if that stage failed).
+        PipelineResult with all four agents' outputs.
+
+    Raises:
+        InvalidImageError: If the image is invalid (from Visual Art Historian).
+        VertexCallError: If any Vertex AI call fails.
+        CreditExhaustedError: If Parallel Search credits are exhausted.
     """
-    result = PipelineResult()
+    pipeline_start = time.perf_counter()
+    logger.info("Pipeline started")
 
     # --- Stage 1: Visual Art Historian ---
-    logger.info("Pipeline stage 1: Visual Art Historian")
-    try:
-        result.visual_analysis = await analyze_artwork(input_data)
-        logger.info(
-            "Stage 1 complete: search_keys.primary_artist_attribution={}",
-            result.visual_analysis.search_keys.primary_artist_attribution,
+    logger.info("Stage 1: Visual Art Historian — starting")
+    visual_analysis = await analyze_artwork(
+        VisualAnalysisInput(
+            images=input_data.images,
+            known_title=input_data.known_title,
+            known_artist=input_data.known_artist,
+            known_period=input_data.known_period,
+            medium=input_data.medium,
         )
-    except InvalidImageError as exc:
-        logger.error("Pipeline aborted at stage 1: invalid image — {}", str(exc))
-        result.errors.append(f"Visual Art Historian: {exc}")
-        return result
-    except VertexCallError as exc:
-        logger.error("Pipeline stage 1 failed: Vertex AI error — {}", str(exc))
-        result.errors.append(f"Visual Art Historian: {exc}")
-        return result
+    )
+    logger.info(
+        "Stage 1: Visual Art Historian — complete (attribution={})",
+        visual_analysis.search_keys.primary_artist_attribution,
+    )
 
-    # --- Stage 2: Provenance/Legal ---
-    logger.info("Pipeline stage 2: Provenance/Legal")
-    try:
-        result.provenance_legal = await assess_provenance(
-            result.visual_analysis.search_keys
-        )
-        logger.info(
-            "Stage 2 complete: requires_human_review={}",
-            result.provenance_legal.requires_human_review,
-        )
-    except CreditExhaustedError as exc:
-        logger.error(
-            "Pipeline stage 2: Parallel Search credits exhausted — {}", str(exc)
-        )
-        result.errors.append(f"Provenance/Legal: {exc}")
-        # Continue — partial pipeline results are still useful
-    except VertexCallError as exc:
-        logger.error("Pipeline stage 2 failed: Vertex AI error — {}", str(exc))
-        result.errors.append(f"Provenance/Legal: {exc}")
-        # Continue — stage 3/4 can still run with whatever is available
+    # --- Stage 2: Provenance/Legal + Financial Valuation (concurrent) ---
+    logger.info("Stage 2: Provenance/Legal + Financial Valuation — starting (concurrent)")
+    title_risk, valuation = await asyncio.gather(
+        assess_provenance(visual_analysis.search_keys),
+        assess_valuation(visual_analysis.search_keys),
+    )
+    logger.info(
+        "Stage 2: concurrent stage complete (provenance_review={}, valuation_review={})",
+        title_risk.requires_human_review,
+        valuation.requires_human_review,
+    )
 
-    # --- Stage 3: Financial Valuation ---
-    logger.info("Pipeline stage 3: Financial Valuation")
-    try:
-        result.financial_valuation = await assess_valuation(
-            result.visual_analysis.search_keys,
-            title_risk=result.provenance_legal,
+    # --- Stage 3: Curator ---
+    logger.info("Stage 3: Curator — starting")
+    curator_output = await curate(
+        CuratorInput.model_construct(
+            visual_analysis=visual_analysis,
+            title_risk=title_risk,
+            valuation=valuation,
+            variant_key=input_data.variant_key,
         )
-        logger.info(
-            "Stage 3 complete: corridor=${:,.0f}–${:,.0f}",
-            result.financial_valuation.valuation_corridor.low_estimate_usd,
-            result.financial_valuation.valuation_corridor.high_estimate_usd,
-        )
-    except CreditExhaustedError as exc:
-        logger.error(
-            "Pipeline stage 3: Parallel Search credits exhausted — {}", str(exc)
-        )
-        result.errors.append(f"Financial Valuation: {exc}")
-    except VertexCallError as exc:
-        logger.error("Pipeline stage 3 failed: Vertex AI error — {}", str(exc))
-        result.errors.append(f"Financial Valuation: {exc}")
+    )
+    logger.info(
+        "Stage 3: Curator — complete (variant={})",
+        curator_output.variant_used,
+    )
 
-    # --- Stage 4: Curator ---
-    logger.info("Pipeline stage 4: Curator")
-    if result.visual_analysis and result.provenance_legal and result.financial_valuation:
-        try:
-            curator_input = CuratorInput(
-                visual_analysis=result.visual_analysis,
-                title_risk=result.provenance_legal,
-                valuation=result.financial_valuation,
-            )
-            result.curator_output = await curate(curator_input)
-            logger.info(
-                "Stage 4 complete: variant_used={}, disclosures={}",
-                result.curator_output.variant_used,
-                len(result.curator_output.disclosures),
-            )
-        except VertexCallError as exc:
-            logger.error("Pipeline stage 4 failed: Vertex AI error — {}", str(exc))
-            result.errors.append(f"Curator: {exc}")
-    else:
-        logger.warning(
-            "Pipeline stage 4: Curator skipped — missing upstream outputs "
-            "(visual={}, provenance={}, valuation={})",
-            result.visual_analysis is not None,
-            result.provenance_legal is not None,
-            result.financial_valuation is not None,
-        )
+    elapsed_s = time.perf_counter() - pipeline_start
+    logger.info("Pipeline complete in {:.1f}s", elapsed_s)
 
-    return result
+    return PipelineResult.model_construct(
+        visual_analysis=visual_analysis,
+        title_risk=title_risk,
+        valuation=valuation,
+        curator_output=curator_output,
+    )
