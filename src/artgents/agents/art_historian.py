@@ -54,6 +54,14 @@ class ProvenanceSearchKeys(BaseModel):
     Wikidata, Met/AIC APIs, and Parallel Search.
     """
 
+    work_title: str | None = Field(
+        default=None,
+        description=(
+            "Title of the work. ONLY populated from user-supplied known_title "
+            "or text legibly visible in the image (label, plaque, inscription). "
+            "NEVER inferred from style/subject matter. None if unknown."
+        ),
+    )
     primary_artist_attribution: str = Field(
         ...,
         description=(
@@ -144,7 +152,16 @@ signature visible, attribution based on stylistic similarity to documented works
 _OUTPUT_INSTRUCTIONS = """\
 Return your analysis as structured JSON matching the required schema. Be specific
 and evidence-based. For search_keywords, provide 5-10 terms optimized for querying
-art databases (Wikidata, museum APIs, auction records)."""
+art databases (Wikidata, museum APIs, auction records).
+
+CRITICAL: For `work_title` in search_keys:
+- Set it ONLY if you have a genuine title from: (1) the user-supplied known_title
+  metadata, or (2) text you can clearly read in the image (a label, plaque, title
+  card, or inscription naming the work).
+- If NEITHER of those sources gives you a title, set work_title to null.
+- NEVER guess or infer a title from the subject matter, style, or composition.
+  "Water Lilies" is not a valid work_title just because you see water lilies —
+  it must be read from a visible label or supplied as metadata."""
 
 
 def _build_blind_discovery_prompt(voice: str, domain: str) -> str:

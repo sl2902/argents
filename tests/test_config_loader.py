@@ -68,7 +68,7 @@ class TestGetDualAgentConfig:
         config = get_dual_agent_config("provenance_legal")
         assert isinstance(config, DualAgentConfig)
         assert config.temperature == 0.2
-        assert config.max_output_tokens == 4096
+        assert config.max_output_tokens == 8192
         assert len(config.variants) == 2
         assert "compliance_auditor" in config.variants
         assert "provenance_historian" in config.variants

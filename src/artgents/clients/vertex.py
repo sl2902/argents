@@ -151,7 +151,33 @@ async def generate_structured(
     if text is None:
         raise VertexCallError("Vertex AI returned empty response text")
 
-    return json.loads(text)
+    # Check for truncation (MAX_TOKENS finish reason)
+    if response.candidates:
+        finish_reason = response.candidates[0].finish_reason
+        if finish_reason and "MAX_TOKENS" in str(finish_reason):
+            logger.warning(
+                "Vertex AI response truncated (MAX_TOKENS): model={}, "
+                "max_output_tokens={}. Response may be invalid JSON.",
+                model,
+                max_output_tokens,
+            )
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        logger.error(
+            "Vertex AI returned invalid JSON (likely truncated): "
+            "model={}, max_output_tokens={}, response_length={}, error={}",
+            model,
+            max_output_tokens,
+            len(text),
+            str(exc),
+        )
+        raise VertexCallError(
+            f"Vertex AI response is not valid JSON (likely truncated at "
+            f"max_output_tokens={max_output_tokens}). "
+            f"Response length: {len(text)} chars. Error: {exc}"
+        ) from exc
 
 
 class VertexCallError(Exception):

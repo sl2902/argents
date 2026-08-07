@@ -55,9 +55,10 @@ visual_art_historian:
 
 provenance_legal:
   temperature: 0.2  # applies identically to BOTH sub-agents below
-  max_output_tokens: 4096  # per sub-agent call; evidence bundle + two
+  max_output_tokens: 8192  # per sub-agent call; evidence bundle + two
                             # full sub-agent outputs is the largest
-                            # schema in this project
+                            # schema in this project — needs room for
+                            # structured JSON with reasoning text
   retrieval:
     description: >
       Shared evidence-gathering stage, run once before either sub-agent
