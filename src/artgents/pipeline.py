@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import dataclass
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -40,6 +41,18 @@ from artgents.agents.provenance_legal import (
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
+
+
+@dataclass
+class StageTiming:
+    """Timing data for each pipeline stage (milliseconds)."""
+
+    visual_analysis_ms: int = 0
+    provenance_ms: int = 0
+    valuation_ms: int = 0
+    stage_2_wall_clock_ms: int = 0  # actual elapsed for concurrent stage
+    curator_ms: int = 0
+    total_ms: int = 0
 
 
 class PipelineInput(BaseModel):
@@ -70,6 +83,7 @@ class PipelineResult(BaseModel):
     title_risk: TitleRiskMatrix
     valuation: FinancialValuationResult
     curator_output: CuratorOutput
+    timings: StageTiming | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +118,7 @@ async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
 
     # --- Stage 1: Visual Art Historian ---
     logger.info("Stage 1: Visual Art Historian — starting")
+    stage1_start = time.perf_counter()
     visual_analysis = await analyze_artwork(
         VisualAnalysisInput(
             images=input_data.images,
@@ -113,25 +128,45 @@ async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
             medium=input_data.medium,
         )
     )
+    visual_analysis_ms = int((time.perf_counter() - stage1_start) * 1000)
     logger.info(
-        "Stage 1: Visual Art Historian — complete (attribution={})",
+        "Stage 1: Visual Art Historian — complete (attribution={}, {}ms)",
         visual_analysis.search_keys.primary_artist_attribution,
+        visual_analysis_ms,
     )
 
     # --- Stage 2: Provenance/Legal + Financial Valuation (concurrent) ---
     logger.info("Stage 2: Provenance/Legal + Financial Valuation — starting (concurrent)")
-    title_risk, valuation = await asyncio.gather(
-        assess_provenance(visual_analysis.search_keys),
-        assess_valuation(visual_analysis.search_keys),
+
+    async def _timed_provenance(search_keys):
+        start = time.perf_counter()
+        result = await assess_provenance(search_keys)
+        return result, int((time.perf_counter() - start) * 1000)
+
+    async def _timed_valuation(search_keys):
+        start = time.perf_counter()
+        result = await assess_valuation(search_keys)
+        return result, int((time.perf_counter() - start) * 1000)
+
+    stage2_start = time.perf_counter()
+    (title_risk, prov_ms), (valuation, val_ms) = await asyncio.gather(
+        _timed_provenance(visual_analysis.search_keys),
+        _timed_valuation(visual_analysis.search_keys),
     )
+    stage_2_wall_clock_ms = int((time.perf_counter() - stage2_start) * 1000)
     logger.info(
-        "Stage 2: concurrent stage complete (provenance_review={}, valuation_review={})",
+        "Stage 2: concurrent stage complete (provenance_review={}, valuation_review={}, "
+        "wall_clock={}ms, prov={}ms, val={}ms)",
         title_risk.requires_human_review,
         valuation.requires_human_review,
+        stage_2_wall_clock_ms,
+        prov_ms,
+        val_ms,
     )
 
     # --- Stage 3: Curator ---
     logger.info("Stage 3: Curator — starting")
+    stage3_start = time.perf_counter()
     curator_output = await curate(
         CuratorInput.model_construct(
             visual_analysis=visual_analysis,
@@ -140,17 +175,29 @@ async def run_pipeline(input_data: PipelineInput) -> PipelineResult:
             variant_key=input_data.variant_key,
         )
     )
+    curator_ms = int((time.perf_counter() - stage3_start) * 1000)
     logger.info(
-        "Stage 3: Curator — complete (variant={})",
+        "Stage 3: Curator — complete (variant={}, {}ms)",
         curator_output.variant_used,
+        curator_ms,
     )
 
-    elapsed_s = time.perf_counter() - pipeline_start
-    logger.info("Pipeline complete in {:.1f}s", elapsed_s)
+    total_ms = int((time.perf_counter() - pipeline_start) * 1000)
+    logger.info("Pipeline complete in {:.1f}s", total_ms / 1000)
+
+    timings = StageTiming(
+        visual_analysis_ms=visual_analysis_ms,
+        provenance_ms=prov_ms,
+        valuation_ms=val_ms,
+        stage_2_wall_clock_ms=stage_2_wall_clock_ms,
+        curator_ms=curator_ms,
+        total_ms=total_ms,
+    )
 
     return PipelineResult.model_construct(
         visual_analysis=visual_analysis,
         title_risk=title_risk,
         valuation=valuation,
         curator_output=curator_output,
+        timings=timings,
     )
