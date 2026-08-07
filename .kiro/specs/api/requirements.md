@@ -89,7 +89,12 @@ agent behavior or their own data structures):
 
 - Image upload validation errors (no file, wrong type, `InvalidImageError`
   from Visual Art Historian) -> 400 with a clear message.
-- Pipeline stage failures (typed errors from any agent) -> 500 with a
+- `NotArtworkError` (the image doesn't depict an artwork, per Visual
+  Art Historian's gate check) -> 422 with the model's own
+  `is_artwork_reasoning` as the message, so the user understands why
+  and isn't left guessing — this is a distinct, expected case, not a
+  server error.
+- Pipeline stage failures (typed errors from any agent) → 500 with a
   message identifying which stage failed, not a bare stack trace.
 - Do not swallow errors to always return 200 — per the pipeline's own
   documented scope decision (total stage failure fails the whole

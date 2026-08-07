@@ -37,7 +37,10 @@ synthesizes the final dossier. `pipeline.py` enforces this ordering.
 # src/artgents/agents/art_historian.py
 
 class VisualAnalysisInput(BaseModel):
-    images: list[str] # base64-encoded strings only; 1-N images.
+    images: list[str]  # base64-encoded strings only; 1-N images.
+                        # No GCS URI / URL support in this version —
+                        # caller is responsible for fetching and
+                        # base64-encoding image bytes before calling.
     known_title: str | None = None
     known_artist: str | None = None
     known_period: str | None = None
@@ -58,6 +61,10 @@ class ProvenanceSearchKeys(BaseModel):
     search_keywords: list[str]
 
 class VisualAnalysisOutput(BaseModel):
+    # Gate: checked by the pipeline before continuing downstream
+    is_artwork: bool
+    is_artwork_reasoning: str
+
     # Downstream Handoff 1: Provenance / Legal agent (consumed first)
     search_keys: ProvenanceSearchKeys
 
@@ -71,61 +78,61 @@ async def analyze_artwork(input: VisualAnalysisInput) -> VisualAnalysisOutput:
 ```
 
 ## Config loading
- 
+
 Prompt framing is NOT hardcoded in `art_historian.py` — it's loaded from
 `config/agents.yaml` at import time, via a shared loader (used by every agent, not
 reimplemented per-agent).
- 
+
 The loader must match the actual schema shape in `agents.yaml`, which is
 NOT uniform across agents — do not build a single generic
-`get_agent(role, key)` accessor with a silent "fall back to first
+`get_persona(role, key)` accessor with a silent "fall back to first
 available" default, since that would be wrong for two of the four
 agents:
 
 ```python
 # src/artgents/config_loader.py
- 
+
 class ExpertConfig(BaseModel):
     temperature: float
     max_output_tokens: int
     name: str
     domain: str
     voice: str
- 
+
 class SubAgentVariant(BaseModel):
     name: str
     stance: str
     voice: str
- 
+
 class DualAgentConfig(BaseModel):
     temperature: float
     max_output_tokens: int
     retrieval_description: str
     variants: dict[str, SubAgentVariant]  # exactly 2 keys expected
     synthesis_output: str
- 
+
 class SelectableVariant(BaseModel):
     name: str
     voice: str
- 
+
 class SelectableVariantConfig(BaseModel):
     temperature: float
     max_output_tokens: int
     variants: dict[str, SelectableVariant]
     default_variant: str
- 
+
 def get_expert_config(agent_role: str) -> ExpertConfig:
     """For single-expert agents (visual_art_historian). Raises if the
     agent isn't configured this way — no silent fallback."""
     ...
- 
+
 def get_dual_agent_config(agent_role: str) -> DualAgentConfig:
     """For concurrent dual-agent pairs (provenance_legal,
     financial_valuation). Raises if variants != 2 keys — a pair with a
     missing side is a config error, not something to silently default
     around."""
     ...
- 
+
 def get_selectable_variant_config(
     agent_role: str, variant_key: str | None = None
 ) -> SelectableVariantConfig:
@@ -135,11 +142,10 @@ def get_selectable_variant_config(
     raises."""
     ...
 ```
- 
+
 `art_historian.py` calls `get_expert_config("visual_art_historian")` and
 uses `.temperature`, `.max_output_tokens`, `.voice`, `.domain` to build
 its prompt — it does not read the YAML file directly.
-
 
 ## Model call
 
@@ -164,6 +170,15 @@ its prompt — it does not read the YAML file directly.
 - Prompt explicitly instructs: `primary_artist_attribution` must be
   phrased as an attribution ("Attributed to...") unless a legible
   signature is visible in the image.
+- Prompt explicitly instructs the model to make the `is_artwork` gate
+  decision FIRST and separately from any stylistic/attribution
+  reasoning: `is_artwork` answers "is the photographed subject a
+  physical artwork at all" — a coarse subject-matter check — and must
+  not be influenced by how confident the model is about period, style,
+  or attribution. A genuine but very obscure or poorly-photographed
+  artwork should still get `is_artwork: true`; a clear, well-lit photo
+  of a non-artwork subject should get `is_artwork: false` regardless of
+  how articulately the model could describe it.
 - Prompt explicitly separates two kinds of confidence and instructs the
   model not to conflate them:
   - Confidence in **period/style/movement** identification — can be
@@ -177,10 +192,10 @@ its prompt — it does not read the YAML file directly.
     fluency of its own reasoning inflate the stated confidence.
 
 ## Logging
- 
+
 Uses the shared logger from `src/artgents/logging_config.py` — no
 `print()` calls. Log points:
- 
+
 - Which prompt branch was taken (`blind_discovery` or `verification`),
   logged at INFO
 - Vertex AI call latency, logged at INFO/DEBUG; call failures logged at
@@ -193,8 +208,9 @@ Uses the shared logger from `src/artgents/logging_config.py` — no
 
 ## Error handling
 
-- No usable image (corrupt file, non-image upload) -> return a clear
-  validation error before calling the model, not a wasted API call
+- No usable image (corrupt file, non-image upload, or empty `images`
+  list) -> return a clear validation error before calling the model, not
+  a wasted API call
 - Vertex AI call failure -> propagate a typed error up to `pipeline.py`;
   pipeline decides whether to surface partial results or fail the whole
   run (decision belongs in `pipeline.py` design, not here)

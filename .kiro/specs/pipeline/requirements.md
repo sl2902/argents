@@ -74,6 +74,17 @@ stages.
 If Visual Art Historian fails, the whole pipeline fails — there's no
 meaningful way to run the other three agents without `search_keys`.
 
+**Gate check, before continuing past stage 1:** if
+`visual_analysis.is_artwork` is `False`, the pipeline stops
+immediately and does not run Provenance/Legal, Financial Valuation, or
+Curator — there's no reason to research provenance or estimate a
+valuation for a photo that isn't an artwork, and doing so would waste
+real API cost (Vertex, Parallel Search) on every affected request. This
+raises a typed `NotArtworkError` carrying `is_artwork_reasoning`, so
+the caller gets a clear, actionable message rather than a generic
+failure or — worse — a confused, low-confidence analysis of a photo of
+a sandwich.
+
 If EITHER Provenance/Legal or Financial Valuation fails outright (not
 a partial-evidence case — those are already handled internally by each
 agent's own retrieval-source resilience — but a total failure of the
@@ -98,6 +109,11 @@ deadline.
 - The full pipeline, called once with a real image, produces a valid
   `CuratorOutput` with no manual intervention between stages — this is
   the acceptance bar for Curator's own task 13, closed out here.
+- Given an image where `is_artwork` is `False`, the pipeline raises
+  `NotArtworkError` immediately after stage 1 and does NOT call
+  Provenance/Legal, Financial Valuation, or Curator — verifiable via
+  mocked agent functions asserting the latter three were never
+  invoked.
 - Intermediate agent outputs are accessible from the pipeline's result,
   not discarded after Curator consumes them.
 - Pipeline-level errors (Visual Art Historian failure, or total failure

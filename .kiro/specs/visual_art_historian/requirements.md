@@ -49,6 +49,16 @@ This agent supports two distinct use cases:
 Output is split into two nested groups, matching the two downstream
 consumers:
 
+**Gate field (checked by the pipeline before continuing downstream):**
+- `is_artwork`: bool — whether the image(s) actually depict a physical
+  artwork (painting, sculpture, or similar) at all, as opposed to an
+  unrelated photo (a person, a document, a random object, etc.). This
+  is a cheap, early check — there is no point running Provenance/Legal
+  or Financial Valuation on a photo of a sandwich.
+- `is_artwork_reasoning`: string — brief explanation of the gate
+  decision, shown to the user if the gate fails, so a rejection isn't
+  an opaque dead end.
+
 **`search_keys` (for Provenance/Legal agent — consumed first):**
 - `primary_artist_attribution`: string (e.g. "Georges Braque" or
   "Attributed to School of Braque" if uncertain)
@@ -98,13 +108,24 @@ consumers:
   because it's either genuinely known or genuinely absent, never a
   best-effort fabrication.
 - Output is valid against the agent's Pydantic schema 100% of the time.
+- Given a photo of a clear non-artwork subject (a person, a document, a
+  random household object), `is_artwork` is `false` and
+  `is_artwork_reasoning` states why in plain language a user would
+  understand.
+- Given a photo of a genuine physical artwork — even a low-confidence,
+  ambiguous, or damaged one — `is_artwork` is `true`. The gate is a
+  coarse "is this even the right kind of subject" check, not a quality
+  or authenticity judgment — those remain separate, existing concerns
+  (`stylistic_authenticity_notes`, confidence calibration) and must not
+  be conflated with this gate.
 - Core parsing/validation logic, both prompt branches (blind discovery
   and verification), and invalid-image handling are covered by unit
   tests using a mocked Vertex client — not exercised only manually.
-- The agent logs (via the shared logging_config.py logger, not print()): which prompt 
-  branch was taken (blind discovery vs. verification), Vertex AI call latency and any call failures, 
-  and whenever output is low-confidence or an anomaly is flagged in 
-  stylistic_authenticity_notes — so a run can be debugged from logs 
+- The agent logs (via the shared `logging_config.py` logger, not
+  `print()`): which prompt branch was taken (blind discovery vs.
+  verification), Vertex AI call latency and any call failures, and
+  whenever output is low-confidence or an anomaly is flagged in
+  `stylistic_authenticity_notes` — so a run can be debugged from logs
   alone without re-running the model.
 - Agent voice/domain framing and model parameters (temperature,
   max_output_tokens) are loaded from `config/agents.yaml` via the
