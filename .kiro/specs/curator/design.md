@@ -37,7 +37,18 @@ class CuratorInput(BaseModel):
     valuation: FinancialValuationResult
     variant_key: str | None = None  # None -> use YAML default_variant
 
+class CuratorModelResponse(BaseModel):
+    """Schema the model actually fills in via structured output.
+    Deliberately does NOT include `disclosures` — see 'Mandatory
+    disclosure floor' below for why."""
+    exhibition_narrative: str
+    wall_label: str
+    suggested_title: str
+
 class CuratorOutput(BaseModel):
+    """Final output returned by curate(). `disclosures` is assigned in
+    Python from determine_disclosures()'s return value, never from the
+    model's own output."""
     exhibition_narrative: str
     wall_label: str
     suggested_title: str
@@ -53,8 +64,12 @@ async def determine_disclosures(
     synthesize_title_risk() and synthesize_valuation(). The disclosure
     floor is a compliance-critical check; it must not depend on the
     model choosing to mention it. Computed BEFORE the prompt is built,
-    then injected into the prompt as required content, not left to the
-    model's discretion whether to include it."""
+    then injected into the prompt as required content the model must
+    reference in its prose. The model's response schema
+    (CuratorModelResponse) does not include a disclosures field at
+    all — curate() assigns CuratorOutput.disclosures directly from this
+    function's return value after the model call, never from model
+    output."""
     ...
 
 async def curate(input: CuratorInput) -> CuratorOutput:
@@ -89,16 +104,36 @@ if valuation.requires_human_review:
 ```
 
 This list is then passed INTO the prompt as content the model MUST
-include verbatim or near-verbatim in `disclosures` — the model doesn't
-decide whether to surface it, only how to phrase the surrounding
-narrative. This mirrors the design principle used throughout this
-project: anything compliance-critical (source URLs, risk flags,
-confidence hedging) is enforced structurally, not left to prompt-
-following alone, because prompt-following alone has already been shown
-to fail in exactly this kind of "is this important enough to mention"
-judgment call (see Provenance/Legal's `cited_evidence` bug, which had
-the same root cause: an important fact was in the model's context but
-had no structural guarantee of surfacing in the output).
+reference naturally within `exhibition_narrative`/`wall_label` prose —
+the model doesn't decide whether to surface it, only how to phrase the
+surrounding narrative.
+
+**Critical implementation detail:** `CuratorOutput.disclosures` is NOT
+a field the model fills in as part of its structured output. The
+model's response schema should NOT include a `disclosures` field at
+all — only `exhibition_narrative`, `wall_label`, and `suggested_title`
+come from the model. After the model call returns, `curate()` sets
+`disclosures` directly to the return value of `determine_disclosures()`
+computed earlier, in Python. This was found necessary in testing: an
+earlier version let the model populate `disclosures` as part of its own
+structured output (even while being fed the code-computed list as
+prompt guidance), and the model added an extra, code-uncomputed
+disclosure on one run. That's proof the field wasn't a true structural
+guarantee — a looseness that could just as easily drop a required
+disclosure on a different run, silently. Removing `disclosures` from
+the model's response schema entirely, and assigning it directly in
+Python, is the only way to make it unconditionally correct rather than
+usually correct.
+
+This mirrors the design principle used throughout this project:
+anything compliance-critical (source URLs, risk flags, confidence
+hedging) is enforced structurally, not left to prompt-following alone,
+because prompt-following alone has already been shown to fail in
+exactly this kind of "is this important enough to include, and did I
+include exactly the right set" judgment call (see Provenance/Legal's
+`cited_evidence` bug, which had the same root cause: an important fact
+was in the model's context but had no structural guarantee of
+surfacing in the output).
 
 ## Variant-scoped content inclusion
 

@@ -85,6 +85,21 @@ silently omitted to preserve a cleaner narrative** — this is the same
 principle applied throughout this project: a good story is not a reason
 to suppress a real flag raised by an upstream agent.
 
+**`CuratorOutput.disclosures` MUST be set directly from
+`determine_disclosures()`'s return value in Python, after the model
+call — never trusted from the model's own structured output, even as
+part of the same schema the model fills in.** Testing surfaced why this
+distinction matters: when `disclosures` was populated by the model
+(even when guided by prompt content matching the code-computed list),
+the model added an extra, code-uncomputed disclosure on one run — not
+wrong in that instance, but proof the field wasn't actually
+structurally guaranteed. The same looseness could just as easily drop a
+required disclosure on a different run. The model may reference
+disclosure content naturally within `exhibition_narrative`/`wall_label`
+prose, but the `disclosures` list field itself is a Python-assigned
+value, not model output — this is the only way to make it a true
+guarantee rather than a usually-correct convention.
+
 ## Acceptance criteria
 
 - `exhibition_narrative` and `wall_label` never state an attribution as

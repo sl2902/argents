@@ -14,7 +14,6 @@ call each other directly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from loguru import logger
 
@@ -23,6 +22,11 @@ from artgents.agents.art_historian import (
     VisualAnalysisInput,
     VisualAnalysisOutput,
     analyze_artwork,
+)
+from artgents.agents.curator import (
+    CuratorInput,
+    CuratorOutput,
+    curate,
 )
 from artgents.agents.financial_valuation import (
     FinancialValuationResult,
@@ -47,7 +51,7 @@ class PipelineResult:
     visual_analysis: VisualAnalysisOutput | None = None
     provenance_legal: TitleRiskMatrix | None = None
     financial_valuation: FinancialValuationResult | None = None
-    curator_output: Any = None  # TODO: type once Curator spec exists
+    curator_output: CuratorOutput | None = None
     errors: list[str] = field(default_factory=list)
 
 
@@ -126,8 +130,30 @@ async def run_pipeline(input_data: VisualAnalysisInput) -> PipelineResult:
         result.errors.append(f"Financial Valuation: {exc}")
 
     # --- Stage 4: Curator ---
-    # TODO: Implement once curator agent spec exists.
-    # Will consume: visual_analysis, provenance_legal, financial_valuation
-    logger.info("Pipeline stage 4: Curator (not yet implemented)")
+    logger.info("Pipeline stage 4: Curator")
+    if result.visual_analysis and result.provenance_legal and result.financial_valuation:
+        try:
+            curator_input = CuratorInput(
+                visual_analysis=result.visual_analysis,
+                title_risk=result.provenance_legal,
+                valuation=result.financial_valuation,
+            )
+            result.curator_output = await curate(curator_input)
+            logger.info(
+                "Stage 4 complete: variant_used={}, disclosures={}",
+                result.curator_output.variant_used,
+                len(result.curator_output.disclosures),
+            )
+        except VertexCallError as exc:
+            logger.error("Pipeline stage 4 failed: Vertex AI error — {}", str(exc))
+            result.errors.append(f"Curator: {exc}")
+    else:
+        logger.warning(
+            "Pipeline stage 4: Curator skipped — missing upstream outputs "
+            "(visual={}, provenance={}, valuation={})",
+            result.visual_analysis is not None,
+            result.provenance_legal is not None,
+            result.financial_valuation is not None,
+        )
 
     return result
