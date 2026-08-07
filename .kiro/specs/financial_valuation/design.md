@@ -56,6 +56,21 @@ the two dual-agent agents:
   piece — frame the estimate as "this artist's general market range,"
   not "this artwork is worth X."
 
+**Symmetric comp selection (both sub-agents, not just symmetric
+language):** in `artist_general` mode, both sub-agents must anchor on a
+*representative* comp for their respective end of the market, not the
+single most extreme value available. Concretely: Bullish Specialist
+must not default to the artist's all-time record sale as "the ceiling"
+— that's a one-of-a-kind outlier, not a representative upper bound for
+an unknown work of unconfirmed tier. Instruct it to select from
+consistently strong (but not singular record) sales, or reason about a
+plausible upper percentile, unless `search_keys`/`title_risk` gives
+concrete reason to believe this specific piece is museum/record-tier.
+Symmetrically, Conservative Appraiser should already default to this
+behavior (validated correct in testing) — a modest, representative
+low-tier comp with an appropriate liquidation discount, not the
+single cheapest listing found regardless of relevance.
+
 ## Interface
 
 ```python
@@ -80,11 +95,16 @@ class ComparableSalesEvidence(BaseModel):
 
 class ConservativeAppraiserOutput(BaseModel):
     floor_estimate_usd: float
+    primary_comp: str  # short, self-contained statement of the specific
+                         # comp this estimate is anchored on — stated
+                         # directly by the model, never extracted from
+                         # methodology via string parsing
     methodology: str
     confidence: Literal["low", "moderate", "high"]
 
 class BullishSpecialistOutput(BaseModel):
     ceiling_estimate_usd: float
+    primary_comp: str  # same pattern as above
     methodology: str
     confidence: Literal["low", "moderate", "high"]
 
@@ -183,13 +203,29 @@ contrast rather than average it away with a third opinion.
 - `requires_human_review = True` if:
   - `evidence.evidence_scope == "artist_general"` AND
     `len(evidence.comparable_sales) < 3` (sparse comps), OR
-  - both sub-agents' `confidence == "low"`
+  - both sub-agents' `confidence == "low"`, OR
+  - the spread itself is unusually wide (ceiling more than ~10x floor)
+    — same threshold that triggers the wide-spread note in
+    `corridor_summary`; a spread wide enough to narrate as unusual is
+    wide enough to warrant flagging for review, not just description
 - `corridor_summary` states the range in plain language and explicitly
   flags if the floor-to-ceiling spread is unusually wide (e.g. ceiling
   more than ~3x floor) rather than presenting a wide spread silently as
-  if it were an ordinary, expected result
+  if it were an ordinary, expected result. When flagging a wide spread,
+  it cites each sub-agent's `primary_comp` field directly (e.g. "Floor
+  anchored on: {conservative.primary_comp}. Ceiling anchored on:
+  {bullish.primary_comp}.") — a clean field reference, not extraction
+  from free-text `methodology`. Strip trailing whitespace/punctuation
+  from each `primary_comp` value before interpolating it into the
+  template sentence, so a `primary_comp` that already ends in a period
+  doesn't produce a double-period artifact ("...auction..") in the
+  final summary. An earlier version of this logic tried
+  substring/fragment extraction from `methodology` and produced
+  garbled, unusable output in testing (mid-sentence fragments with no
+  connection to the actual comp) — `primary_comp` exists specifically
+  so this citation is reliable rather than parsed.
 
-## Error handling
+## Error handling 
 
 - Any retrieval source failing → log at ERROR, continue with partial
   evidence from sources that succeeded (same pattern as

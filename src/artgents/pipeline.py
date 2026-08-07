@@ -24,6 +24,10 @@ from artgents.agents.art_historian import (
     VisualAnalysisOutput,
     analyze_artwork,
 )
+from artgents.agents.financial_valuation import (
+    FinancialValuationResult,
+    assess_valuation,
+)
 from artgents.agents.provenance_legal import (
     TitleRiskMatrix,
     assess_provenance,
@@ -42,7 +46,7 @@ class PipelineResult:
 
     visual_analysis: VisualAnalysisOutput | None = None
     provenance_legal: TitleRiskMatrix | None = None
-    financial_valuation: Any = None  # TODO: type once Financial Valuation spec exists
+    financial_valuation: FinancialValuationResult | None = None
     curator_output: Any = None  # TODO: type once Curator spec exists
     errors: list[str] = field(default_factory=list)
 
@@ -101,8 +105,25 @@ async def run_pipeline(input_data: VisualAnalysisInput) -> PipelineResult:
         # Continue — stage 3/4 can still run with whatever is available
 
     # --- Stage 3: Financial Valuation ---
-    # TODO: Implement once financial_valuation agent spec exists.
-    logger.info("Pipeline stage 3: Financial Valuation (not yet implemented)")
+    logger.info("Pipeline stage 3: Financial Valuation")
+    try:
+        result.financial_valuation = await assess_valuation(
+            result.visual_analysis.search_keys,
+            title_risk=result.provenance_legal,
+        )
+        logger.info(
+            "Stage 3 complete: corridor=${:,.0f}–${:,.0f}",
+            result.financial_valuation.valuation_corridor.low_estimate_usd,
+            result.financial_valuation.valuation_corridor.high_estimate_usd,
+        )
+    except CreditExhaustedError as exc:
+        logger.error(
+            "Pipeline stage 3: Parallel Search credits exhausted — {}", str(exc)
+        )
+        result.errors.append(f"Financial Valuation: {exc}")
+    except VertexCallError as exc:
+        logger.error("Pipeline stage 3 failed: Vertex AI error — {}", str(exc))
+        result.errors.append(f"Financial Valuation: {exc}")
 
     # --- Stage 4: Curator ---
     # TODO: Implement once curator agent spec exists.

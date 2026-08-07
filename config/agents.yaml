@@ -88,7 +88,8 @@ provenance_legal:
 
 financial_valuation:
   temperature: 0.2  # applies identically to BOTH sub-agents below
-  max_output_tokens: 3072  # comparable-sales list + reasoning per sub-agent
+  max_output_tokens: 8192  # comparable-sales list + reasoning per sub-agent
+                            # — needs room for structured JSON with methodology text
   retrieval:
     description: >
       Shared evidence-gathering stage, run once before either sub-agent

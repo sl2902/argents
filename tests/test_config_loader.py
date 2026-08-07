@@ -90,7 +90,7 @@ class TestGetDualAgentConfig:
         config = get_dual_agent_config("financial_valuation")
         assert isinstance(config, DualAgentConfig)
         assert config.temperature == 0.2
-        assert config.max_output_tokens == 3072
+        assert config.max_output_tokens == 8192
         assert len(config.variants) == 2
         assert "conservative_appraiser" in config.variants
         assert "bullish_specialist" in config.variants

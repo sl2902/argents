@@ -50,6 +50,24 @@ Requirements, directly mirroring the Provenance/Legal fix:
   artwork is worth X" — and must not present a scattered set of
   different works' sale prices as if they were comps specifically
   representative of the piece being valued.
+- **Comp selection in `"artist_general"` mode must be symmetric between
+  the two sub-agents, not just symmetric in framing language.** Both
+  Conservative Appraiser and Bullish Specialist must select comps
+  representative of a *typical or plausible* work at this artist's
+  general tier — not the single most extreme outlier available in
+  either direction. Testing surfaced this asymmetry concretely:
+  Conservative Appraiser correctly used a modest, representative
+  low-end comp with an appropriate discount; Bullish Specialist instead
+  anchored directly on the artist's single all-time record auction
+  sale, treating a one-of-a-kind outlier as if it were a normal ceiling
+  estimate. The resulting corridor ($50K-$110.5M for one and the same
+  hypothetical unknown work) implicitly describes two different classes
+  of object, not a floor and ceiling for the same piece. Unless
+  `search_keys` or `title_risk` gives actual reason to believe this
+  specific piece is museum/record-tier, the ceiling estimate should be
+  built from a representative upper-tier comp (e.g. a strong but
+  non-record sale, or a reasoned percentile within the observed range),
+  not the literal maximum.
 
 ## User stories
 
@@ -93,6 +111,13 @@ Requirements, directly mirroring the Provenance/Legal fix:
 
 **Conservative Appraiser sub-output:**
 - `floor_estimate_usd`: float
+- `primary_comp`: string — a short, self-contained statement of the
+  specific comp this estimate is anchored on (e.g. "Oilstick on Paper,
+  $70,000-$140,000 auction estimate"), stated directly by the sub-agent
+  as structured output — NOT extracted after the fact from
+  `methodology` via string parsing. This is what `corridor_summary`
+  cites; extracting fragments from free-text `methodology` was tried
+  and produced garbled, unusable output in testing.
 - `methodology`: string — states which comps were used and why, and
   explicitly names the discounts applied (illiquidity, buyer's premium,
   market headwinds)
@@ -102,6 +127,9 @@ Requirements, directly mirroring the Provenance/Legal fix:
 
 **Bullish Specialist sub-output:**
 - `ceiling_estimate_usd`: float
+- `primary_comp`: string — same pattern as Conservative Appraiser's
+  `primary_comp`: a short, self-contained statement of the specific
+  comp this estimate is anchored on, stated directly by the sub-agent.
 - `methodology`: string — states which comps were used, artist momentum
   factors, scarcity/exhibition-history reasoning
 - `confidence`: "low" | "moderate" | "high"
@@ -114,10 +142,26 @@ Requirements, directly mirroring the Provenance/Legal fix:
   a case where the two estimates are wildly divergent (e.g. if floor
   and ceiling differ by more than some notable margin, that gap itself
   is worth naming, not just presenting two numbers side by side as if
-  they were expected to be close)
+  they were expected to be close). When flagging a wide spread,
+  `corridor_summary` must name the specific comp(s) that drove each end
+  of the range (pulled from each sub-agent's own `methodology`, not
+  re-derived or fabricated) — e.g. "floor driven by an early watercolor
+  sale ($10K-20K range); ceiling driven by prime-period canvas sales
+  such as [comp name] ($X)." A bare ratio statement with no traceable
+  evidence is not sufficient, since this field is what Curator consumes
+  downstream — Curator should not need to separately parse both
+  sub-agents' `methodology` fields just to explain why the range is
+  wide.
 - `requires_human_review`: bool — true when comps are sparse/weak
   (`evidence_scope: "artist_general"` AND fewer than some minimum
-  number of comps), or when both sub-agents' `confidence` is "low"
+  number of comps), when both sub-agents' `confidence` is "low", OR
+  when the floor-to-ceiling spread is unusually wide (same threshold
+  used for the `corridor_summary` wide-spread note — e.g. ceiling more
+  than ~10x floor). A corridor this wide is exactly the kind of result
+  a human should sanity-check before it's presented as-is, not just
+  narrated as a caveat in prose — consistent with how Provenance/Legal
+  treats sub-agent disagreement as review-worthy, not just something to
+  mention in `synthesis_summary`.
 
 ## Acceptance criteria
 
@@ -138,6 +182,15 @@ Requirements, directly mirroring the Provenance/Legal fix:
 - `valuation_corridor` is never presented as a single point estimate —
   `low_estimate_usd` and `high_estimate_usd` are always both populated,
   even when the two sub-agents' figures are close.
+- Given an artist with a small number of extreme record-breaking sales
+  far above their typical market (e.g. Basquiat, where the top sale is
+  roughly two orders of magnitude above a typical minor-work sale),
+  `high_estimate_usd` in `"artist_general"` mode reflects a
+  representative upper-tier comp, not the literal all-time-record sale
+  — unless `search_keys`/`title_risk` gives actual reason to believe
+  this specific piece is museum/record-tier. The floor and ceiling must
+  describe plausible values for the SAME hypothetical work, not
+  implicitly describe two different classes of object.
 - Parallel Search query construction follows the same hardening already
   built for Provenance/Legal: filter empty/placeholder search terms,
   skip the call if no usable anchor remains, and apply a relevance
