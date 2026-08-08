@@ -71,10 +71,10 @@ class PipelineInput(BaseModel):
     images: list[str] = Field(
         ..., min_length=1, description="Base64-encoded image(s) of the artwork"
     )
-    known_title: str | None = Field(default=None, description="Known title, if available")
-    known_artist: str | None = Field(default=None, description="Known artist, if available")
-    known_period: str | None = Field(default=None, description="Known period, if available")
-    medium: str | None = Field(default=None, description="Known medium, if available")
+    known_title: str | None = Field(default=None, max_length=200, description="Known title, if available")
+    known_artist: str | None = Field(default=None, max_length=200, description="Known artist, if available")
+    known_period: str | None = Field(default=None, max_length=100, description="Known period, if available")
+    medium: str | None = Field(default=None, max_length=200, description="Known medium, if available")
 
 
 class PipelineResult(BaseModel):

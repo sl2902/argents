@@ -31,18 +31,22 @@ class VisualAnalysisInput(BaseModel):
     )
     known_title: str | None = Field(
         default=None,
+        max_length=200,
         description="Claimed title of the artwork, if available",
     )
     known_artist: str | None = Field(
         default=None,
+        max_length=200,
         description="Claimed artist attribution, if available",
     )
     known_period: str | None = Field(
         default=None,
+        max_length=100,
         description="Claimed period or date range, if available",
     )
     medium: str | None = Field(
         default=None,
+        max_length=200,
         description="Claimed medium (e.g. 'oil on canvas'), if available",
     )
 

@@ -58,8 +58,25 @@ both outputs are always produced and returned together, and the caller
 
 - `images: list[str]` (base64) — passed through to
   `VisualAnalysisInput`
-- `known_title`, `known_artist`, `known_period`, `medium` — optional,
-  passed through to `VisualAnalysisInput`
+- `known_title`, `known_artist`, `medium` — optional, passed through
+  to `VisualAnalysisInput`. Each capped at 200 characters
+  (`Field(max_length=200)`) — hygiene against an accidental huge paste
+  bloating the prompt or the response-cache key, not a serious security
+  control.
+- `known_period` — optional, passed through to `VisualAnalysisInput`.
+  Capped at 100 characters (`Field(max_length=100)`), tighter than the
+  other three fields — this field is structurally a short date/era
+  descriptor, not open-ended free text. Real examples observed in this
+  project's output ("1290–1320, Sienese School, Gothic/Proto-
+  Renaissance," "c. 1400–1420, International Gothic") run 40-50
+  characters; 100 leaves comfortable headroom for a compound period +
+  movement description without being as permissive as the 200-char
+  cap meant for genuinely free-text fields.
+
+Validation happens at `PipelineInput` construction, in the API route
+handler, before a job is created — so an oversized value fails fast
+with a clear error rather than a job starting and failing deep inside
+stage 1.
 
 No `variant_key` input — per "Reuse over re-run," both Curator variants
 are always computed; the caller selects which to display after the

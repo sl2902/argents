@@ -127,6 +127,58 @@ class TestPipelineModels:
         assert result.curator_output_auction_house is not None
         assert result.curator_output_public_gallery is not None
 
+    # --- max_length constraints ---
+
+    def test_known_period_rejected_over_100_chars(self):
+        """known_period has a tighter cap (100) than other fields (200).
+
+        A value between 100 and 200 chars must be rejected — this is the case
+        that distinguishes the 100-char cap from the previous 200-char uniform cap.
+        """
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        period_101 = "x" * 101  # > 100, < 200
+        with pytest.raises(Exception):
+            PipelineInput(images=[jpeg], known_period=period_101)
+
+    def test_known_period_accepted_at_100_chars(self):
+        """known_period at exactly 100 characters is valid."""
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        period_100 = "x" * 100
+        inp = PipelineInput(images=[jpeg], known_period=period_100)
+        assert len(inp.known_period) == 100
+
+    def test_known_title_accepted_at_200_chars(self):
+        """known_title allows up to 200 characters."""
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        title_200 = "T" * 200
+        inp = PipelineInput(images=[jpeg], known_title=title_200)
+        assert len(inp.known_title) == 200
+
+    def test_known_title_rejected_over_200_chars(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        with pytest.raises(Exception):
+            PipelineInput(images=[jpeg], known_title="T" * 201)
+
+    def test_known_artist_accepted_at_200_chars(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        inp = PipelineInput(images=[jpeg], known_artist="A" * 200)
+        assert len(inp.known_artist) == 200
+
+    def test_known_artist_rejected_over_200_chars(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        with pytest.raises(Exception):
+            PipelineInput(images=[jpeg], known_artist="A" * 201)
+
+    def test_medium_accepted_at_200_chars(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        inp = PipelineInput(images=[jpeg], medium="M" * 200)
+        assert len(inp.medium) == 200
+
+    def test_medium_rejected_over_200_chars(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
+        with pytest.raises(Exception):
+            PipelineInput(images=[jpeg], medium="M" * 201)
+
 
 # ---------------------------------------------------------------------------
 # TestPipelineOrchestration
