@@ -49,6 +49,14 @@ export async function analyzeArtwork(
   const submitResponse = await fetch('/api/analyze', { method: 'POST', body: formData });
   if (!submitResponse.ok) {
     const err = await submitResponse.json();
+    // FastAPI Pydantic validation errors return {"detail": [...]} not {"error": "..."}
+    if (submitResponse.status === 422 && err.detail && Array.isArray(err.detail)) {
+      throw new AnalyzeError(
+        'One of the fields you entered was too long or invalid. Please check your input and try again.',
+        422,
+        'validation',
+      );
+    }
     throw new AnalyzeError(err.error || 'Upload failed', submitResponse.status, err.stage || 'upload');
   }
   const { job_id } = await submitResponse.json();

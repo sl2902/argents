@@ -25,6 +25,9 @@ const glossary: Record<string, string> = {
   palette: "The range of colors used by an artist in a particular work or body of work.",
   brushwork: "The visible marks and texture left by an artist's brush, which can indicate technique, period, and authorship.",
   composition: "The arrangement of visual elements within a work — how forms, colors, and space are organized.",
+  "adoration of the magi": "Also known as the Adoration of the Kings or the Visitation of the Wise Men — is the name traditionally given to a popular subject in the Nativity of Jesus in art.",
+  "sienese school": "The Sienese school of painting flourished in Siena, Italy, between the 13th and 15th centuries.",
+  "madonna and child": "Is a depiction of the Virgin and Child painted by Duccio di Buoninsegna, one of the most influential artists of the late 13th and early 14th centuries.",
 
   // Provenance / Legal
   provenance: "The documented ownership history of an artwork, from creation to present. Gaps in provenance can indicate theft, looting, or disputed ownership.",

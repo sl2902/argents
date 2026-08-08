@@ -11,6 +11,22 @@ interface UploadFormProps {
   imageUrl: string | null;
 }
 
+/**
+ * Returns color classes for the character counter and input border based on usage.
+ * - Default (< 90%): muted grey
+ * - Warning (>= 90%, < 100%): amber
+ * - At-limit (100%): red
+ */
+function charCountStyle(length: number, max: number): { counter: string; border: string } {
+  if (length >= max) {
+    return { counter: 'text-red-600', border: 'border-red-400' };
+  }
+  if (length >= Math.floor(max * 0.9)) {
+    return { counter: 'text-amber-600', border: 'border-amber-400' };
+  }
+  return { counter: 'text-gray-400', border: 'border-gray-300' };
+}
+
 export default function UploadForm({ onSubmit, imageUrl }: UploadFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [knownTitle, setKnownTitle] = useState('');
@@ -89,14 +105,10 @@ export default function UploadForm({ onSubmit, imageUrl }: UploadFormProps) {
           Optional: provide known metadata
         </summary>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <input placeholder="Known title" value={knownTitle} onChange={e => setKnownTitle(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Known artist" value={knownArtist} onChange={e => setKnownArtist(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Known period (e.g. 1880-1890)" value={knownPeriod} onChange={e => setKnownPeriod(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Medium (e.g. oil on canvas)" value={medium} onChange={e => setMedium(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          <MetadataInput placeholder="Known title" value={knownTitle} onChange={setKnownTitle} maxLength={200} />
+          <MetadataInput placeholder="Known artist" value={knownArtist} onChange={setKnownArtist} maxLength={200} />
+          <MetadataInput placeholder="Known period (e.g. 1880-1890)" value={knownPeriod} onChange={setKnownPeriod} maxLength={100} />
+          <MetadataInput placeholder="Medium (e.g. oil on canvas)" value={medium} onChange={setMedium} maxLength={200} />
         </div>
       </details>
 
@@ -108,5 +120,37 @@ export default function UploadForm({ onSubmit, imageUrl }: UploadFormProps) {
         Analyze Artwork
       </button>
     </form>
+  );
+}
+
+/** A text input with a live character counter rendered below the field. */
+function MetadataInput({
+  placeholder,
+  value,
+  onChange,
+  maxLength,
+}: {
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength: number;
+}) {
+  const style = charCountStyle(value.length, maxLength);
+
+  return (
+    <div>
+      <input
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        maxLength={maxLength}
+        className={`border rounded-lg px-3 py-2 text-sm w-full ${style.border}`}
+      />
+      {value.length > 0 && (
+        <span className={`block text-right text-xs mt-1 ${style.counter}`}>
+          {value.length}/{maxLength}
+        </span>
+      )}
+    </div>
   );
 }
