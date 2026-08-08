@@ -318,7 +318,10 @@ Return structured JSON matching the required schema."""
 # ---------------------------------------------------------------------------
 
 
-async def curate(input_data: CuratorInput) -> CuratorOutput:
+async def curate(
+    input_data: CuratorInput,
+    on_progress: "Callable[[str], None] | None" = None,
+) -> CuratorOutput:
     """Produce exhibition-ready narrative content from upstream analyses.
 
     This is the single entrypoint for the Curator agent, consumed by pipeline.py.
@@ -370,6 +373,13 @@ async def curate(input_data: CuratorInput) -> CuratorOutput:
 
     # 5. Construct final output: model's prose + computed disclosures + variant
     model_response = CuratorModelResponse.model_validate(result_dict)
+
+    if on_progress:
+        try:
+            label = "Auction House" if variant_name == "auction_house" else "Public Gallery"
+            on_progress(f"{label} copy complete")
+        except Exception:
+            pass
 
     output = CuratorOutput(
         exhibition_narrative=model_response.exhibition_narrative,

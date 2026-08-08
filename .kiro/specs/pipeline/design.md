@@ -37,15 +37,36 @@ class PipelineInput(BaseModel):
     known_artist: str | None = None
     known_period: str | None = None
     medium: str | None = None
-    variant_key: str | None = None  # Curator voice selection
+    # NOTE: no variant_key — both Curator variants are always computed,
+    # per the "Reuse over re-run" principle in structure.md
 
 class PipelineResult(BaseModel):
     visual_analysis: VisualAnalysisOutput
     title_risk: TitleRiskMatrix
     valuation: FinancialValuationResult
-    curator_output: CuratorOutput
+    curator_output_auction_house: CuratorOutput
+    curator_output_public_gallery: CuratorOutput
 
-async def run_pipeline(input: PipelineInput) -> PipelineResult:
+async def run_pipeline(
+    input: PipelineInput,
+    on_progress: Callable[[str, str], None] | None = None,
+) -> PipelineResult:
+    def _report(stage_key: str, message: str) -> None:
+        if on_progress is not None:
+            try:
+                on_progress(stage_key, message)
+            except Exception:
+                logger.exception("on_progress callback failed")
+
+    def _tagged(stage_key: str) -> Callable[[str], None]:
+        # Wrapper so assess_provenance()/assess_valuation()/curate()
+        # each receive a plain Callable[[str], None] and don't need to
+        # know about stage tagging — only run_pipeline() knows the
+        # stage_key mapping.
+        return lambda message: _report(stage_key, message)
+
+    _report("start", "Starting analysis...")
+    _report("visual_analysis", "Analyzing artwork...")
     visual_analysis = await analyze_artwork(VisualAnalysisInput(
         images=input.images,
         known_title=input.known_title,
@@ -54,25 +75,94 @@ async def run_pipeline(input: PipelineInput) -> PipelineResult:
         medium=input.medium,
     ))
 
+    if not visual_analysis.is_artwork:
+        raise NotArtworkError(visual_analysis.is_artwork_reasoning)
+
+    _report("concurrent_research", "Researching provenance and estimating valuation...")
     title_risk, valuation = await asyncio.gather(
-        assess_provenance(visual_analysis.search_keys),
-        assess_valuation(visual_analysis.search_keys),
+        assess_provenance(
+            visual_analysis.search_keys,
+            on_progress=_tagged("concurrent_research"),
+        ),
+        assess_valuation(
+            visual_analysis.search_keys,
+            on_progress=_tagged("concurrent_research"),
+        ),
     )
 
-    curator_output = await curate(CuratorInput(
-        visual_analysis=visual_analysis,
-        title_risk=title_risk,
-        valuation=valuation,
-        variant_key=input.variant_key,
-    ))
+    _report("curator", "Writing exhibition copy...")
+    curator_auction_house, curator_public_gallery = await asyncio.gather(
+        curate(CuratorInput(
+            visual_analysis=visual_analysis,
+            title_risk=title_risk,
+            valuation=valuation,
+            variant_key="auction_house",
+        ), on_progress=_tagged("curator")),
+        curate(CuratorInput(
+            visual_analysis=visual_analysis,
+            title_risk=title_risk,
+            valuation=valuation,
+            variant_key="public_gallery",
+        ), on_progress=_tagged("curator")),
+    )
 
+    _report("curator", "Complete.")
     return PipelineResult(
         visual_analysis=visual_analysis,
         title_risk=title_risk,
         valuation=valuation,
-        curator_output=curator_output,
+        curator_output_auction_house=curator_auction_house,
+        curator_output_public_gallery=curator_public_gallery,
     )
 ```
+
+## Substep granularity — threading on_progress into agent internals
+
+The top-level `on_progress` calls at pipeline stage boundaries (4
+messages total) give an honest but coarse view — a user sees "Stage 2
+running" for 25-40+ seconds with no visibility into what's actually
+happening underneath. Each agent already logs at meaningful internal
+points (retrieval per source, each sub-agent's completion) — threading
+the SAME `on_progress` callback down into those existing log points
+gives real substep granularity without inventing new instrumentation.
+
+**Callback signature is `(stage_key: str, message: str)`, not a bare
+string** — see "Progress reporting" in requirements.md for why:
+reliable frontend grouping requires a real field to group by, not
+message-text inference. `run_pipeline()` is the only place that knows
+the stage_key mapping; it builds stage-scoped wrapper closures (e.g.
+`_tagged("concurrent_research")` returning a function that calls
+`on_progress("concurrent_research", msg)`) and passes those into
+`assess_provenance()`, `assess_valuation()`, `curate()` — those
+functions receive a plain `Callable[[str], None]` from their own
+point of view and don't need to know about stage tagging at all.
+
+Each of `assess_provenance()`, `assess_valuation()`, and `curate()`
+gains an optional `on_progress: Callable[[str], None] | None`
+parameter (single-string, from their perspective — the tagging happens
+one level up in `run_pipeline()`), passed through from `run_pipeline()`.
+Internally, each function calls it at the same points it already logs:
+
+- `assess_provenance()` → inside `gather_evidence()`: after each
+  source completes (Wikidata, Met, AIC, Parallel Search — in whatever
+  order they actually complete, since these already run somewhat
+  independently); then after each sub-agent completes
+  (`run_compliance_auditor()`, `run_provenance_historian()`)
+- `assess_valuation()` → inside `gather_comps()`: after each source
+  completes (Wikidata, Parallel Search); then after each sub-agent
+  completes (`run_conservative_appraiser()`, `run_bullish_specialist()`)
+- `curate()` → one message per variant as each completes (not
+  mid-variant substeps — Curator is a single model call per variant,
+  there's no finer internal granularity to report); `run_pipeline()`
+  tags these `"curator"`
+
+This roughly triples the total message count from today's 4 to
+somewhere around 12-15 real messages across a full run, all reflecting
+genuine completion of real work — not fabricated.
+
+Note the two `curate()` calls also run concurrently via
+`asyncio.gather` — there's no dependency between them either, same
+reasoning as stage 2.
 
 ## Error handling
 
@@ -97,7 +187,7 @@ stage-transition view on top of that, not a replacement for it:
 INFO: Pipeline started
 INFO: Stage 1 (Visual Art Historian) complete
 INFO: Stage 2 (Provenance/Legal + Financial Valuation, concurrent) complete
-INFO: Stage 3 (Curator) complete
+INFO: Stage 3 (Curator, both variants concurrent) complete
 INFO: Pipeline complete
 ```
 

@@ -188,7 +188,10 @@ class TitleRiskMatrix(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def gather_evidence(search_keys: ProvenanceSearchKeys) -> EvidenceBundle:
+async def gather_evidence(
+    search_keys: ProvenanceSearchKeys,
+    on_progress: "Callable[[str], None] | None" = None,
+) -> EvidenceBundle:
     """Query all external sources and assemble an EvidenceBundle.
 
     Calls Wikidata, Met/AIC, and Parallel Search ONCE, collecting
@@ -233,6 +236,12 @@ async def gather_evidence(search_keys: ProvenanceSearchKeys) -> EvidenceBundle:
         sources_queried,
         sources_failed,
     )
+
+    if on_progress:
+        try:
+            on_progress(f"Retrieved {len(facts)} provenance facts from {len(sources_queried)} sources")
+        except Exception:
+            pass
 
     return EvidenceBundle(
         retrieved_facts=facts,
@@ -1010,7 +1019,10 @@ def synthesize_title_risk(
 # ---------------------------------------------------------------------------
 
 
-async def assess_provenance(search_keys: ProvenanceSearchKeys) -> TitleRiskMatrix:
+async def assess_provenance(
+    search_keys: ProvenanceSearchKeys,
+    on_progress: "Callable[[str], None] | None" = None,
+) -> TitleRiskMatrix:
     """Full provenance assessment: retrieval → dual reasoning → synthesis.
 
     This is the single entrypoint for the Provenance & Legal agent,
@@ -1023,6 +1035,7 @@ async def assess_provenance(search_keys: ProvenanceSearchKeys) -> TitleRiskMatri
 
     Args:
         search_keys: From the Visual Art Historian agent.
+        on_progress: Optional progress callback.
 
     Returns:
         TitleRiskMatrix with both sub-agent assessments and synthesis.
@@ -1033,8 +1046,16 @@ async def assess_provenance(search_keys: ProvenanceSearchKeys) -> TitleRiskMatri
         VertexCallError: If either sub-agent's Vertex AI call fails.
     """
     import asyncio
+    from typing import Callable
 
     from loguru import logger
+
+    def _progress(msg: str) -> None:
+        if on_progress:
+            try:
+                on_progress(msg)
+            except Exception:
+                pass
 
     logger.info(
         "Starting provenance assessment for: {}",
@@ -1042,13 +1063,14 @@ async def assess_provenance(search_keys: ProvenanceSearchKeys) -> TitleRiskMatri
     )
 
     # Stage 1: Retrieval (shared, single pass)
-    bundle = await gather_evidence(search_keys)
+    bundle = await gather_evidence(search_keys, on_progress=_progress)
 
     # Stage 2: Dual reasoning (concurrent)
     auditor_result, historian_result = await asyncio.gather(
         run_compliance_auditor(bundle),
         run_provenance_historian(bundle),
     )
+    _progress("Provenance sub-agents completed their assessments")
 
     # Stage 3: Synthesis (plain Python)
     result = synthesize_title_risk(auditor_result, historian_result, bundle)

@@ -839,6 +839,7 @@ def synthesize_valuation(
 async def assess_valuation(
     search_keys: ProvenanceSearchKeys,
     title_risk: TitleRiskMatrix | None = None,
+    on_progress: "Callable[[str], None] | None" = None,
 ) -> FinancialValuationResult:
     """Full financial valuation: retrieval → dual reasoning → synthesis.
 
@@ -869,14 +870,23 @@ async def assess_valuation(
         search_keys.primary_artist_attribution,
     )
 
+    def _progress(msg: str) -> None:
+        if on_progress:
+            try:
+                on_progress(msg)
+            except Exception:
+                pass
+
     # Stage 1: Retrieval (shared, single pass)
     evidence = await gather_comps(search_keys)
+    _progress(f"Retrieved {len(evidence.comparable_sales)} comparable sales for valuation")
 
     # Stage 2: Dual reasoning (concurrent)
     conservative_result, bullish_result = await asyncio.gather(
         run_conservative_appraiser(evidence, title_risk),
         run_bullish_specialist(evidence),
     )
+    _progress("Valuation sub-agents completed their estimates")
 
     # Stage 3: Synthesis (plain Python)
     result = synthesize_valuation(conservative_result, bullish_result, evidence)

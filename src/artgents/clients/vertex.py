@@ -21,10 +21,46 @@ from artgents.config import settings
 
 def _build_client() -> genai.Client:
     """Create a Vertex AI-backed genai client using project settings."""
+    import httpx
+
     return genai.Client(
         vertexai=True,
         project=settings.gcp_project,
         location=settings.gcp_location,
+        http_options=types.HttpOptions(
+            # ── Timeout configuration ──────────────────────────────────────
+            # IMPORTANT: HttpOptions.timeout is in MILLISECONDS (not seconds).
+            # The google-genai library divides by 1000 before passing to httpx.
+            # This value becomes a uniform per-request timeout for all httpx
+            # sub-timeouts (connect, write, read, pool).
+            #
+            # We set 120_000ms = 120s because:
+            #   • read: model generation routinely takes 40-60s; 120s prevents
+            #     premature disconnects on complex prompts.
+            #   • write: Visual Art Historian sends base64 image payloads that
+            #     can be several MB; needs >> 1s on any real connection.
+            #   • connect/pool: 120s is generous but harmless; these complete
+            #     quickly in practice.
+            #
+            # Previous value was `timeout=120` which was only 120ms (0.12s),
+            # causing WriteTimeout errors at ~271ms for image-bearing requests.
+            timeout=120_000,
+            # Granular sub-timeouts as a client-level default on the underlying
+            # httpx.AsyncClient. The per-request timeout above (120s uniform)
+            # takes precedence for normal calls, but these serve as:
+            #   1. Documentation of intended per-phase budgets
+            #   2. Fallback if the library ever changes per-request behavior
+            # Values chosen:
+            #   connect=10s  — TCP+TLS handshake; 10s covers slow DNS/routes
+            #   write=30s    — sending request body (base64 images ≈ 1-5 MB)
+            #   read=120s    — waiting for model response (the slow part)
+            #   pool=10s     — waiting for a connection from the pool
+            async_client_args={
+                "timeout": httpx.Timeout(
+                    connect=10.0, write=30.0, read=120.0, pool=10.0
+                )
+            },
+        ),
     )
 
 
@@ -87,6 +123,65 @@ def image_part_from_base64(data: str, mime_type: str = "image/jpeg") -> types.Pa
     return types.Part(inline_data=types.Blob(data=raw_bytes, mime_type=mime_type))
 
 
+# ---------------------------------------------------------------------------
+# Retry logic for 429 RESOURCE_EXHAUSTED
+# ---------------------------------------------------------------------------
+
+_MAX_RETRIES = 3
+_INITIAL_DELAY_S = 2.0
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Check if an exception is a transient error worth retrying.
+
+    Retryable errors:
+    - 429 RESOURCE_EXHAUSTED (rate limit / quota burst)
+    - Server disconnects / connection resets (transient network issues)
+
+    Non-retryable (fail immediately):
+    - Auth errors, malformed requests, model errors, etc.
+    """
+    exc_str = str(exc).lower()
+    # 429 rate limit
+    if "429" in exc_str and "resource_exhausted" in exc_str:
+        return True
+    # Server disconnects / connection-level failures
+    if "disconnected" in exc_str:
+        return True
+    if "connection" in exc_str and ("reset" in exc_str or "closed" in exc_str or "refused" in exc_str):
+        return True
+    if "timed out" in exc_str or "timeout" in exc_str:
+        return True
+    return False
+
+
+async def _call_with_retry(client, model, contents, config):
+    """Call Vertex AI with retry for transient errors (429, disconnects).
+
+    Retries up to 3 times with exponential backoff (2s, 4s, 8s).
+    Non-transient errors fail immediately without retry.
+    """
+    import asyncio as _asyncio
+
+    for attempt in range(_MAX_RETRIES + 1):
+        try:
+            return await client.aio.models.generate_content(
+                model=model, contents=contents, config=config,
+            )
+        except Exception as exc:
+            if not _is_retryable(exc):
+                raise  # non-transient: fail immediately
+            if attempt < _MAX_RETRIES:
+                delay = _INITIAL_DELAY_S * (2 ** attempt)
+                logger.warning(
+                    "Vertex AI transient error — retry {}/{} after {:.1f}s (type={}, error: {})",
+                    attempt + 1, _MAX_RETRIES, delay, type(exc).__name__, str(exc)[:100] or repr(exc)[:100],
+                )
+                await _asyncio.sleep(delay)
+            else:
+                raise  # retries exhausted
+
+
 async def generate_structured(
     *,
     model: str,
@@ -126,20 +221,19 @@ async def generate_structured(
 
     start = time.perf_counter()
     try:
-        response = await client.aio.models.generate_content(
-            model=model,
-            contents=contents,
-            config=config,
-        )
+        response = await _call_with_retry(client, model, contents, config)
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - start) * 1000
+        # Use repr() as fallback — some google-genai exceptions have empty str()
+        exc_msg = str(exc) or repr(exc)
         logger.error(
-            "Vertex AI call failed after {:.0f}ms: model={}, error={}",
+            "Vertex AI call failed after {:.0f}ms: model={}, error_type={}, error={}",
             elapsed_ms,
             model,
-            str(exc),
+            type(exc).__name__,
+            exc_msg,
         )
-        raise VertexCallError(str(exc)) from exc
+        raise VertexCallError(exc_msg or f"Unknown {type(exc).__name__} error") from exc
 
     elapsed_ms = (time.perf_counter() - start) * 1000
     logger.info("Vertex AI call completed in {:.0f}ms (model={})", elapsed_ms, model)

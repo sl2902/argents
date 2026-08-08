@@ -1,12 +1,13 @@
 """Unit tests for pipeline orchestration.
 
-Tests correct call ordering, concurrency of stage 2, result aggregation,
+Tests correct call ordering, concurrency of stages 2 and 3, result aggregation,
 and error propagation — all with mocked agent functions.
 """
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,13 +24,10 @@ from artgents.pipeline import PipelineInput, PipelineResult, run_pipeline
 @pytest.fixture
 def sample_input() -> PipelineInput:
     """Minimal valid pipeline input."""
-    import base64
-
     jpeg_bytes = b"\xff\xd8\xff\xe0" + b"\x00" * 100
     return PipelineInput(
         images=[base64.b64encode(jpeg_bytes).decode()],
         known_artist="Claude Monet",
-        variant_key="public_gallery",
     )
 
 
@@ -66,12 +64,24 @@ def mock_valuation_output():
 
 
 @pytest.fixture
-def mock_curator_output():
-    """Mocked CuratorOutput."""
+def mock_curator_ah():
+    """Mocked CuratorOutput for auction_house."""
+    output = MagicMock()
+    output.variant_used = "auction_house"
+    output.exhibition_narrative = "Auction narrative"
+    output.wall_label = "Monet, c. 1905"
+    output.suggested_title = "Untitled Landscape"
+    output.disclosures = []
+    return output
+
+
+@pytest.fixture
+def mock_curator_pg():
+    """Mocked CuratorOutput for public_gallery."""
     output = MagicMock()
     output.variant_used = "public_gallery"
-    output.exhibition_narrative = "A narrative..."
-    output.wall_label = "Monet, c. 1905"
+    output.exhibition_narrative = "Gallery narrative"
+    output.wall_label = "Attributed to Monet"
     output.suggested_title = "Untitled Landscape"
     output.disclosures = []
     return output
@@ -86,16 +96,12 @@ class TestPipelineModels:
     """Test PipelineInput and PipelineResult models."""
 
     def test_pipeline_input_minimal(self):
-        import base64
-
         jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
         inp = PipelineInput(images=[jpeg])
         assert inp.known_title is None
-        assert inp.variant_key is None
+        assert "variant_key" not in PipelineInput.model_fields
 
     def test_pipeline_input_full(self):
-        import base64
-
         jpeg = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 100).decode()
         inp = PipelineInput(
             images=[jpeg],
@@ -103,26 +109,23 @@ class TestPipelineModels:
             known_artist="Monet",
             known_period="1906",
             medium="oil on canvas",
-            variant_key="auction_house",
         )
         assert inp.known_title == "Water Lilies"
-        assert inp.variant_key == "auction_house"
 
     def test_pipeline_input_empty_images_rejected(self):
         with pytest.raises(Exception):
             PipelineInput(images=[])
 
-    def test_pipeline_result_exposes_all_outputs(self):
+    def test_pipeline_result_exposes_both_curator_variants(self):
         result = PipelineResult.model_construct(
             visual_analysis=MagicMock(),
             title_risk=MagicMock(),
             valuation=MagicMock(),
-            curator_output=MagicMock(),
+            curator_output_auction_house=MagicMock(),
+            curator_output_public_gallery=MagicMock(),
         )
-        assert result.visual_analysis is not None
-        assert result.title_risk is not None
-        assert result.valuation is not None
-        assert result.curator_output is not None
+        assert result.curator_output_auction_house is not None
+        assert result.curator_output_public_gallery is not None
 
 
 # ---------------------------------------------------------------------------
@@ -151,34 +154,34 @@ class TestPipelineOrchestration:
         mock_visual_output,
         mock_title_risk,
         mock_valuation_output,
-        mock_curator_output,
+        mock_curator_ah,
+        mock_curator_pg,
     ):
         """Agents are called in correct order with correct inputs."""
         mock_analyze.return_value = mock_visual_output
         mock_provenance.return_value = mock_title_risk
         mock_valuation.return_value = mock_valuation_output
-        mock_curate.return_value = mock_curator_output
+        # curate is called twice (both variants)
+        mock_curate.side_effect = [mock_curator_ah, mock_curator_pg]
 
         result = await run_pipeline(sample_input)
 
         # Stage 1 called
         mock_analyze.assert_called_once()
         # Stage 2 both called with search_keys
-        mock_provenance.assert_called_once_with(mock_visual_output.search_keys)
-        mock_valuation.assert_called_once_with(mock_visual_output.search_keys)
-        # Stage 3 called with all prior outputs
-        mock_curate.assert_called_once()
-        curator_arg = mock_curate.call_args[0][0]
-        assert curator_arg.visual_analysis == mock_visual_output
-        assert curator_arg.title_risk == mock_title_risk
-        assert curator_arg.valuation == mock_valuation_output
-        assert curator_arg.variant_key == "public_gallery"
+        mock_provenance.assert_called_once()
+        mock_valuation.assert_called_once()
+        # Verify search_keys was the first positional arg
+        assert mock_provenance.call_args[0][0] == mock_visual_output.search_keys
+        assert mock_valuation.call_args[0][0] == mock_visual_output.search_keys
+        # Stage 3: curate called TWICE (both variants)
+        assert mock_curate.call_count == 2
 
     @patch("artgents.pipeline.curate", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
     @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
-    async def test_result_contains_all_outputs(
+    async def test_result_contains_both_variants(
         self,
         mock_analyze,
         mock_provenance,
@@ -188,29 +191,31 @@ class TestPipelineOrchestration:
         mock_visual_output,
         mock_title_risk,
         mock_valuation_output,
-        mock_curator_output,
+        mock_curator_ah,
+        mock_curator_pg,
     ):
-        """PipelineResult exposes all intermediate + final outputs."""
+        """PipelineResult exposes both Curator variants."""
         mock_analyze.return_value = mock_visual_output
         mock_provenance.return_value = mock_title_risk
         mock_valuation.return_value = mock_valuation_output
-        mock_curate.return_value = mock_curator_output
+        mock_curate.side_effect = [mock_curator_ah, mock_curator_pg]
 
         result = await run_pipeline(sample_input)
 
         assert result.visual_analysis is mock_visual_output
         assert result.title_risk is mock_title_risk
         assert result.valuation is mock_valuation_output
-        assert result.curator_output is mock_curator_output
+        assert result.curator_output_auction_house is mock_curator_ah
+        assert result.curator_output_public_gallery is mock_curator_pg
 
 
 # ---------------------------------------------------------------------------
-# TestConcurrency — stage 2 must run in parallel
+# TestConcurrency
 # ---------------------------------------------------------------------------
 
 
 class TestConcurrency:
-    """Verify stage 2 agents run concurrently, not sequentially."""
+    """Verify stages 2 and 3 run their sub-tasks concurrently."""
 
     @pytest.fixture(autouse=True)
     def _set_env(self, monkeypatch):
@@ -228,10 +233,9 @@ class TestConcurrency:
         mock_curate,
         sample_input,
         mock_visual_output,
-        mock_curator_output,
     ):
         """Stage 2 agents run concurrently — total time ≈ max(both), not sum."""
-        delay = 0.3  # 300ms per mock agent
+        delay = 0.3
 
         async def slow_provenance(*args, **kwargs):
             await asyncio.sleep(delay)
@@ -248,24 +252,21 @@ class TestConcurrency:
         mock_analyze.return_value = mock_visual_output
         mock_provenance.side_effect = slow_provenance
         mock_valuation.side_effect = slow_valuation
-        mock_curate.return_value = mock_curator_output
+        mock_curate.return_value = MagicMock()
 
         start = time.perf_counter()
         await run_pipeline(sample_input)
         elapsed = time.perf_counter() - start
 
-        # If sequential: ~600ms. If concurrent: ~300ms.
-        # Allow generous margin but assert it's not sequential.
         assert elapsed < delay * 1.8, (
-            f"Stage 2 appears sequential: elapsed {elapsed:.2f}s "
-            f"(expected < {delay * 1.8:.2f}s for concurrent execution)"
+            f"Stage 2 appears sequential: elapsed {elapsed:.2f}s"
         )
 
     @patch("artgents.pipeline.curate", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
     @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
-    async def test_both_stage2_agents_called_simultaneously(
+    async def test_stage3_curator_variants_run_concurrently(
         self,
         mock_analyze,
         mock_provenance,
@@ -273,45 +274,32 @@ class TestConcurrency:
         mock_curate,
         sample_input,
         mock_visual_output,
-        mock_curator_output,
     ):
-        """Both stage 2 agents are in-flight at the same time."""
-        in_flight = []
+        """Both Curator variants run concurrently in stage 3."""
+        delay = 0.3
 
-        async def track_provenance(*args, **kwargs):
-            in_flight.append("provenance_start")
-            await asyncio.sleep(0.1)
-            in_flight.append("provenance_end")
-            result = MagicMock()
-            result.requires_human_review = False
-            return result
-
-        async def track_valuation(*args, **kwargs):
-            in_flight.append("valuation_start")
-            await asyncio.sleep(0.1)
-            in_flight.append("valuation_end")
-            result = MagicMock()
-            result.requires_human_review = False
-            return result
+        async def slow_curate(*args, **kwargs):
+            await asyncio.sleep(delay)
+            return MagicMock()
 
         mock_analyze.return_value = mock_visual_output
-        mock_provenance.side_effect = track_provenance
-        mock_valuation.side_effect = track_valuation
-        mock_curate.return_value = mock_curator_output
+        mock_provenance.return_value = MagicMock(requires_human_review=False)
+        mock_valuation.return_value = MagicMock(requires_human_review=False)
+        mock_curate.side_effect = slow_curate
 
+        start = time.perf_counter()
         await run_pipeline(sample_input)
+        elapsed = time.perf_counter() - start
 
-        # Both should start before either ends (concurrent)
-        starts = [i for i, x in enumerate(in_flight) if "start" in x]
-        ends = [i for i, x in enumerate(in_flight) if "end" in x]
-        assert len(starts) == 2
-        assert all(s < min(ends) for s in starts), (
-            f"Both agents should start before either ends. Order: {in_flight}"
+        # Two curate calls at 300ms each — if sequential would be 600ms+
+        assert elapsed < delay * 1.8, (
+            f"Stage 3 curator variants appear sequential: elapsed {elapsed:.2f}s"
         )
+        assert mock_curate.call_count == 2
 
 
 # ---------------------------------------------------------------------------
-# TestErrorPropagation — no suppression
+# TestErrorPropagation
 # ---------------------------------------------------------------------------
 
 
@@ -336,16 +324,11 @@ class TestErrorPropagation:
     @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
     @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
-    async def test_stage2_provenance_error_propagates(
-        self,
-        mock_analyze,
-        mock_provenance,
-        mock_valuation,
-        mock_curate,
-        sample_input,
-        mock_visual_output,
+    async def test_stage2_error_propagates(
+        self, mock_analyze, mock_provenance, mock_valuation, mock_curate,
+        sample_input, mock_visual_output,
     ):
-        """Provenance/Legal failure propagates — no partial recovery."""
+        """Stage 2 failure propagates."""
         from artgents.clients.vertex import VertexCallError
 
         mock_analyze.return_value = mock_visual_output
@@ -359,37 +342,9 @@ class TestErrorPropagation:
     @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
     @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
     @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
-    async def test_stage2_valuation_error_propagates(
-        self,
-        mock_analyze,
-        mock_provenance,
-        mock_valuation,
-        mock_curate,
-        sample_input,
-        mock_visual_output,
-    ):
-        """Financial Valuation failure propagates — no partial recovery."""
-        from artgents.clients.vertex import VertexCallError
-
-        mock_analyze.return_value = mock_visual_output
-        mock_provenance.return_value = MagicMock(requires_human_review=False)
-        mock_valuation.side_effect = VertexCallError("Vertex timeout")
-
-        with pytest.raises(VertexCallError, match="Vertex timeout"):
-            await run_pipeline(sample_input)
-
-    @patch("artgents.pipeline.curate", new_callable=AsyncMock)
-    @patch("artgents.pipeline.assess_valuation", new_callable=AsyncMock)
-    @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
-    @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
     async def test_stage3_curator_error_propagates(
-        self,
-        mock_analyze,
-        mock_provenance,
-        mock_valuation,
-        mock_curate,
-        sample_input,
-        mock_visual_output,
+        self, mock_analyze, mock_provenance, mock_valuation, mock_curate,
+        sample_input, mock_visual_output,
     ):
         """Curator failure propagates."""
         from artgents.clients.vertex import VertexCallError
@@ -397,10 +352,15 @@ class TestErrorPropagation:
         mock_analyze.return_value = mock_visual_output
         mock_provenance.return_value = MagicMock(requires_human_review=False)
         mock_valuation.return_value = MagicMock(requires_human_review=False)
-        mock_curate.side_effect = VertexCallError("Curator model error")
+        mock_curate.side_effect = VertexCallError("Curator error")
 
-        with pytest.raises(VertexCallError, match="Curator model error"):
+        with pytest.raises(VertexCallError, match="Curator error"):
             await run_pipeline(sample_input)
+
+
+# ---------------------------------------------------------------------------
+# TestNotArtworkGate
+# ---------------------------------------------------------------------------
 
 
 class TestNotArtworkGate:
@@ -415,11 +375,7 @@ class TestNotArtworkGate:
     @patch("artgents.pipeline.assess_provenance", new_callable=AsyncMock)
     @patch("artgents.pipeline.analyze_artwork", new_callable=AsyncMock)
     async def test_not_artwork_raises_and_skips_downstream(
-        self,
-        mock_analyze,
-        mock_provenance,
-        mock_valuation,
-        mock_curate,
+        self, mock_analyze, mock_provenance, mock_valuation, mock_curate,
         sample_input,
     ):
         """If is_artwork=False, NotArtworkError raised and no downstream agents called."""
@@ -435,7 +391,6 @@ class TestNotArtworkGate:
         with pytest.raises(NotArtworkError, match="person, not an artwork"):
             await run_pipeline(sample_input)
 
-        # Downstream agents were NEVER called
         mock_provenance.assert_not_called()
         mock_valuation.assert_not_called()
         mock_curate.assert_not_called()

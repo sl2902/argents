@@ -1,12 +1,12 @@
-"""Response models for the Artgents API.
+"""API response models for the Artgents application.
 
-Transforms internal PipelineResult into a flat, frontend-friendly shape
-with truncated evidence samples and timing data.
+Defines the shaped response for POST /api/analyze, including
+evidence sampling/truncation that never mutates the underlying PipelineResult.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from artgents.agents.financial_valuation import (
     BullishSpecialistOutput,
@@ -34,6 +34,15 @@ class EvidenceItemDisplay(BaseModel):
     source_type: str
 
 
+class CuratorVariantOutput(BaseModel):
+    """One Curator variant's output."""
+
+    exhibition_narrative: str
+    wall_label: str
+    suggested_title: str
+    disclosures: list[str]
+
+
 class AnalyzeResponse(BaseModel):
     # Visual analysis
     attribution: str
@@ -55,12 +64,9 @@ class AnalyzeResponse(BaseModel):
     corridor_summary: str
     valuation_requires_human_review: bool
 
-    # Curator
-    exhibition_narrative: str
-    wall_label: str
-    suggested_title: str
-    disclosures: list[str]
-    variant_used: str
+    # Curator - both variants
+    curator_auction_house: CuratorVariantOutput
+    curator_public_gallery: CuratorVariantOutput
 
     # Evidence sample
     provenance_evidence_sample: list[EvidenceItemDisplay]
@@ -127,6 +133,10 @@ def build_analyze_response(pipeline_result) -> AnalyzeResponse:
         total_ms=t.total_ms if t else 0,
     )
 
+    # Build both Curator variant outputs
+    ah = r.curator_output_auction_house
+    pg = r.curator_output_public_gallery
+
     return AnalyzeResponse(
         attribution=r.visual_analysis.search_keys.primary_artist_attribution,
         period_style=f"{r.visual_analysis.search_keys.probable_creation_window}, {r.visual_analysis.search_keys.style_and_movement}",
@@ -142,11 +152,18 @@ def build_analyze_response(pipeline_result) -> AnalyzeResponse:
         valuation_corridor=r.valuation.valuation_corridor,
         corridor_summary=r.valuation.corridor_summary,
         valuation_requires_human_review=r.valuation.requires_human_review,
-        exhibition_narrative=r.curator_output.exhibition_narrative,
-        wall_label=r.curator_output.wall_label,
-        suggested_title=r.curator_output.suggested_title,
-        disclosures=r.curator_output.disclosures,
-        variant_used=r.curator_output.variant_used,
+        curator_auction_house=CuratorVariantOutput(
+            exhibition_narrative=ah.exhibition_narrative,
+            wall_label=ah.wall_label,
+            suggested_title=ah.suggested_title,
+            disclosures=ah.disclosures,
+        ),
+        curator_public_gallery=CuratorVariantOutput(
+            exhibition_narrative=pg.exhibition_narrative,
+            wall_label=pg.wall_label,
+            suggested_title=pg.suggested_title,
+            disclosures=pg.disclosures,
+        ),
         provenance_evidence_sample=prov_sample,
         valuation_evidence_sample=val_sample,
         total_provenance_facts=len(prov_facts),

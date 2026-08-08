@@ -31,12 +31,44 @@ layer the frontend calls; it has no agent logic of its own.
 
 - `POST /api/analyze` — accepts a multipart image upload (one or more
   files) plus optional form fields (`known_title`, `known_artist`,
-  `known_period`, `medium`, `variant_key`). Converts uploaded images to
-  base64 internally, calls `run_pipeline()`, returns the shaped
-  response described below.
+  `known_period`, `medium`). Starts the pipeline as a background task
+  and returns immediately with `{"job_id": "..."}` — does NOT block
+  until the pipeline completes. No `variant_key` form field — per the
+  pipeline's "Reuse over re-run" design, BOTH Curator variants
+  (auction_house, public_gallery) are always computed and returned in
+  one response; the caller/frontend selects which to display without
+  a second request.
+- `GET /api/status/{job_id}` — polled by the frontend to get real
+  progress. Returns the job's current status (`queued` | `running` |
+  `complete` | `failed`), a list of progress log messages (populated
+  via `run_pipeline()`'s `on_progress` callback as real stages
+  complete — not a heuristic timer), and once `complete`, the full
+  `AnalyzeResponse` result. On `failed`, includes an error message and
+  the failing stage, same information the previous synchronous error
+  handling provided.
 - `GET /api/health` — trivial liveness check; returns 200 with basic
   status. No agent logic invoked. Useful for judges/deployment checks
   without burning API quota.
+
+## Job store — explicit scope decision
+
+Job state is held in an in-memory dictionary within the API process
+(`job_id -> {status, logs, result | error}`). This is a deliberate,
+acknowledged scoping decision for this project's timeline, not an
+oversight:
+
+- **Single-instance only.** If the deployment ever runs multiple
+  backend instances (e.g. Cloud Run autoscaling beyond one instance), a
+  status poll could hit a different instance than the one running the
+  job and get a false "not found." For a single-instance hackathon
+  demo/judging deployment this is acceptable; it would need a real
+  shared store (Redis, a database) to be production-safe. Document
+  this limitation directly in the README, not just here.
+- **No persistence across restarts** — a job in progress during a
+  server restart is lost. Acceptable for this project's scope.
+- Flag back if remaining time before the deadline makes it worth
+  revisiting this tradeoff (e.g. if deployment ends up needing multiple
+  instances for some other reason).
 
 ## Response shape — showcase-oriented, not a raw passthrough
 
@@ -55,8 +87,10 @@ The response must include:
   `floor_estimate_usd`/`primary_comp`/`methodology`/`confidence` AND
   Bullish Specialist's equivalent fields, plus `valuation_corridor` and
   `corridor_summary`.
-- **Curator output**: `exhibition_narrative`, `wall_label`,
-  `suggested_title`, `disclosures`, `variant_used`.
+- **Curator output — both variants**: `exhibition_narrative`,
+  `wall_label`, `suggested_title`, `disclosures` for BOTH
+  `auction_house` and `public_gallery`, so the frontend can toggle
+  between them client-side with zero additional requests.
 - **Evidence trail**: a representative sample of `retrieved_facts` /
   `comparable_sales` with their `source_url`s — enough to demonstrate
   real, citable sources are behind the findings, without necessarily
@@ -87,27 +121,38 @@ agent behavior or their own data structures):
 
 ## Error handling
 
-- Image upload validation errors (no file, wrong type, `InvalidImageError`
-  from Visual Art Historian) -> 400 with a clear message.
-- `NotArtworkError` (the image doesn't depict an artwork, per Visual
-  Art Historian's gate check) -> 422 with the model's own
-  `is_artwork_reasoning` as the message, so the user understands why
-  and isn't left guessing — this is a distinct, expected case, not a
-  server error.
-- Pipeline stage failures (typed errors from any agent) → 500 with a
-  message identifying which stage failed, not a bare stack trace.
-- Do not swallow errors to always return 200 — per the pipeline's own
-  documented scope decision (total stage failure fails the whole
-  request), the API should reflect that honestly with an appropriate
-  error status, not silently degrade.
+Since the pipeline now runs as a background task, errors surface via
+job status (`status: "failed"`), not a synchronous HTTP error response
+from `/api/analyze` itself (that endpoint only fails synchronously for
+request-shape problems — e.g. no file uploaded at all — before the
+background task even starts).
+
+- Malformed upload request itself (no file, wrong content type) → 400
+  from `POST /api/analyze` directly, before any job is created.
+- Once a job is running: `NotArtworkError`, or any other typed agent
+  exception, results in `GET /api/status/{job_id}` returning
+  `status: "failed"` with an error message and the failing stage
+  identified — not a 500 from the status endpoint itself (the status
+  endpoint succeeds at reporting that the job failed; the job's
+  content is what failed).
+- Do not swallow errors to always report `status: "complete"` — per
+  the pipeline's own documented scope decision (total stage failure
+  fails the whole request), the job status should reflect that
+  honestly.
 
 ## Acceptance criteria
 
-- `POST /api/analyze` response includes both sub-agents' full
-  reasoning for both dual-agent stages, not just synthesized summaries
-  — verifiable by checking the response schema directly exposes
-  `compliance_auditor`/`provenance_historian` and
-  `conservative_appraiser`/`bullish_specialist` as distinct objects.
+- `POST /api/analyze` returns a `job_id` immediately (does not block
+  for 60-90+ seconds) and `GET /api/status/{job_id}` reflects real
+  pipeline progress — verifiable by polling during a real run and
+  confirming `logs` grows with real stage-completion messages, not a
+  fixed/predetermined sequence unrelated to actual execution timing.
+- Response includes both sub-agents' full reasoning for both dual-agent
+  stages, not just synthesized summaries — verifiable by checking the
+  final `AnalyzeResponse` (delivered via `GET /api/status/{job_id}`
+  once complete) directly exposes `compliance_auditor`/
+  `provenance_historian` and `conservative_appraiser`/
+  `bullish_specialist` as distinct objects.
 - Response includes per-stage timing with concurrency visible (stage 2
   duration is NOT simply the sum of both agents' individual
   durations).

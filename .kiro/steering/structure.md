@@ -88,6 +88,18 @@
   chosen per run) rather than concurrent — see `config/agents.yaml` for
   the distinction.
 
+  ## Reuse over re-run
+ 
+When a request parameter only affects the LAST stage of a multi-stage
+pipeline (e.g. Curator's `variant_key`), do not re-run earlier stages
+just to satisfy that parameter. Compute all variants of the final
+stage's output in one pipeline execution, reusing the same upstream
+results, rather than requiring a full re-run per variant. This applies
+generally, not just to Curator: if a future parameter is ever added
+that only affects one stage, prefer computing all its variants
+up front over making the caller pay for a full re-run to change one
+thing at the end.
+
 ## Testing conventions
 
 - Tests mirror the `src/artgents/` structure 1:1 under `tests/`

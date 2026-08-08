@@ -22,7 +22,8 @@ analyze_artwork()  [Visual Art Historian]
         └──► assess_valuation()    ┘   (asyncio.gather)
                     │
                     ▼
-              curate()  [Curator]
+       curate(variant="auction_house")
+       curate(variant="public_gallery")
 ```
 
 `assess_provenance()` and `assess_valuation()` both depend only on
@@ -33,7 +34,14 @@ roughly double end-to-end latency for no benefit (each individual call
 already takes 15-40+ seconds based on testing).
 
 `curate()` runs last and requires the outputs of all three prior
-stages.
+stages. **Per the "Reuse over re-run" principle in `structure.md`**:
+`variant_key` only affects Curator, not any upstream stage, so
+`run_pipeline()` computes BOTH Curator variants in one execution —
+`curate()` is called twice (auction_house, public_gallery), reusing the
+same `visual_analysis`/`title_risk`/`valuation` from the single
+upstream run. There is no `variant_key` input to the pipeline anymore;
+both outputs are always produced and returned together, and the caller
+(API/frontend) picks which to display without any additional request.
 
 ## User stories
 
@@ -52,15 +60,19 @@ stages.
   `VisualAnalysisInput`
 - `known_title`, `known_artist`, `known_period`, `medium` — optional,
   passed through to `VisualAnalysisInput`
-- `variant_key: str | None` — passed through to `CuratorInput` for
-  Curator's voice selection
+
+No `variant_key` input — per "Reuse over re-run," both Curator variants
+are always computed; the caller selects which to display after the
+fact, not before the pipeline runs.
 
 ## Outputs
 
-- `CuratorOutput` — the final result, per Curator's own spec
+- `CuratorOutput` for BOTH variants (`curator_output_auction_house`,
+  `curator_output_public_gallery`) — the final result, per Curator's
+  own spec, computed twice per "Reuse over re-run"
 - Additionally, expose the three intermediate agent outputs
   (`VisualAnalysisOutput`, `TitleRiskMatrix`,
-  `FinancialValuationResult`) alongside the final `CuratorOutput` in a
+  `FinancialValuationResult`) alongside both `CuratorOutput`s in a
   wrapping result object — not just the final narrative. A judge or
   user may want to inspect the actual evidence/reasoning behind the
   final copy (source URLs, risk levels, valuation corridor), not just
@@ -99,6 +111,34 @@ observed as a frequent failure mode in testing so far. Flag back if
 this tradeoff should be reconsidered given remaining time before the
 deadline.
 
+## Progress reporting
+
+`run_pipeline()` accepts an optional `on_progress: Callable[[str,
+str], None] | None` callback — `(stage_key, message)`, not a bare
+string. `stage_key` is one of four canonical values matching the four
+top-level stages (`"start"`, `"visual_analysis"`,
+`"concurrent_research"`, `"curator"`), so the frontend can reliably
+GROUP substep messages under their correct parent stage rather than
+inferring grouping from message text content, which would be fragile.
+`run_pipeline()` builds stage-scoped wrapper closures once per stage
+and passes them into `assess_provenance()`, `assess_valuation()`, and
+`curate()` — those functions themselves don't need to know about
+stage-tagging, they just call whatever callback they're given with
+their own message text; `run_pipeline()` is the only place that knows
+the stage-key mapping. Both `assess_provenance()` and
+`assess_valuation()` get wrappers tagged `"concurrent_research"` (they
+share one parent stage in the UI, since they run concurrently as one
+visual unit), even though they're two independent calls.
+
+This is not new instrumentation — it's exposing the same
+already-logged points introduced in the earlier substep-granularity
+change, just with a stage tag added so the frontend can render nested/
+indented children under their correct parent rather than a flat list.
+
+`on_progress` failures (e.g. a broken callback) must not affect
+pipeline execution — wrap callback invocation so a callback error is
+logged but never propagates into the actual agent pipeline.
+
 ## Acceptance criteria
 
 - `assess_provenance()` and `assess_valuation()` are verifiably called
@@ -123,9 +163,17 @@ deadline.
   each stage transition, so a full pipeline run's timeline is visible
   in logs alone, matching the level of observability each individual
   agent already has.
-- Core orchestration logic (ordering, concurrency, error propagation)
-  is covered by unit tests with mocked agent functions — not exercised
-  only manually against real APIs.
+- Given an `on_progress` callback, `run_pipeline()` invokes it with
+  `(stage_key, message)` at each substep completion point — verifiable
+  by a mocked callback asserting both the stage_key values are always
+  one of the four canonical keys, and message content/order matches
+  the real execution sequence.
+- Substeps belonging to `assess_provenance()` and `assess_valuation()`
+  are both tagged `"concurrent_research"`, even though they're
+  reported by two independently-running functions — this lets the
+  frontend group both agents' substeps under one shared parent stage.
+- A raising `on_progress` callback does not crash or interrupt the
+  pipeline — the error is caught and logged, execution continues.
 
 ## Out of scope
 
