@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+.env
+
+# Tests (not needed in production image)
+tests/
+
+# Kiro specs and steering (development docs only)
+.kiro/
+
+# Frontend (deployed separately on Vercel)
+frontend/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Documentation
+*.md
+diagrams/
+
+# Cache and temp
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

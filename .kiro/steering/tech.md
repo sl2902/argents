@@ -23,9 +23,6 @@
 - **Primary:** Gemini via Vertex AI (project-based, billed against Google
   Cloud credit). Chosen specifically to avoid the AI Studio free-tier rate
   limits (5–15 RPM), which are too low for a live multi-agent demo.
-- **Fallback (manual, not auto-routed):** Gemma 4 self-hosted on Cloud Run.
-  Enabled via a config flag, not automatic failover. Documented as a
-  fallback path in the README, not exercised by default.
 - The AI Studio Gemini Developer API (api key based, ai.google.dev) is
   intentionally NOT used as the primary path.
 
@@ -79,5 +76,4 @@ parsing independent and easy to reason about per agent.
 ## Deployment
 
 - Backend: Cloud Run (existing known pattern from prior projects)
-- Frontend: static/deployed alongside or separately, TBD in
-  `structure.md` / frontend spec
+- Frontend: Vercel

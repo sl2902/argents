@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     model_fast: str = "gemini-2.5-flash"
     model_pro: str = "gemini-2.5-pro"
 
+    # CORS: comma-separated list of allowed origins.
+    # Default "*" is permissive for local dev; set to the actual frontend
+    # origin in production (e.g. "https://artgents.vercel.app").
+    cors_allowed_origins: str = "*"
+
     model_config = SettingsConfigDict(
         env_file=".env", 
         env_file_encoding="utf-8",
