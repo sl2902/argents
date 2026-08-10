@@ -10,6 +10,13 @@ export class AnalyzeError extends Error {
   }
 }
 
+/**
+ * Base URL for API calls. In dev, Vite proxies /api to localhost:8000.
+ * In production, set VITE_API_URL to the Cloud Run backend URL
+ * (e.g. "https://artgents-backend-xxxxx.run.app").
+ */
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 interface JobStatusResponse {
   job_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
@@ -46,7 +53,7 @@ export async function analyzeArtwork(
   if (params.medium) formData.append('medium', params.medium);
 
   // 1. Submit job
-  const submitResponse = await fetch('/api/analyze', { method: 'POST', body: formData });
+  const submitResponse = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: formData });
   if (!submitResponse.ok) {
     const err = await submitResponse.json();
     // FastAPI Pydantic validation errors return {"detail": [...]} not {"error": "..."}
@@ -65,7 +72,7 @@ export async function analyzeArtwork(
   while (true) {
     await sleep(2000); // poll every 2 seconds
 
-    const statusResponse = await fetch(`/api/status/${job_id}`);
+    const statusResponse = await fetch(`${API_BASE}/api/status/${job_id}`);
     if (!statusResponse.ok) {
       throw new AnalyzeError('Failed to check job status', statusResponse.status, 'polling');
     }
