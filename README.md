@@ -56,56 +56,56 @@ asserted without a citation a judge can independently verify.
 
 ```mermaid
 flowchart TD
-A["Upload: image + optional known metadata"] --> B
+    A["Upload: image + optional known metadata"] --> B
+ 
+    subgraph B["Visual Art Historian (Gemini 2.5 Flash, Vertex AI)"]
+        direction TB
+        B0["is_artwork gate"]
+        B1["Attribution (hedged), style, period, condition"]
+        B0 --> B1
+    end
+ 
+    B --> C{"search_keys"}
+    C --> D
+    C --> E
+ 
+    subgraph D["Provenance / Legal"]
+        direction TB
+        D0["Shared retrieval:<br/>Wikidata SPARQL, Met API, AIC API, Parallel Search"]
+        D0 --> D1["Compliance Auditor<br/>(skeptic)"]
+        D0 --> D2["Provenance Historian<br/>(advocate)"]
+        D1 -.runs concurrently.- D2
+    end
+ 
+    subgraph E["Financial Valuation"]
+        direction TB
+        E0["Shared retrieval:<br/>Wikidata SPARQL, Parallel Search"]
+        E0 --> E1["Conservative Appraiser<br/>(floor)"]
+        E0 --> E2["Bullish Specialist<br/>(ceiling)"]
+        E1 -.runs concurrently.- E2
+    end
+ 
+    D1 --> F
+    D2 --> F
+    E1 --> F
+    E2 --> F
+ 
+    subgraph F["Curator (single agent, dual output)"]
+        direction TB
+        F0["Auction House variant"]
+        F1["Public Gallery variant"]
+        F0 -.computed together, instant client-side toggle.- F1
+    end
+ 
+    F --> G["Structural disclosure floor:<br/>human-review flags are Python-assigned,<br/>never left to the model's discretion to mention"]
+ 
+    style B fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
+    style D fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
+    style E fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
+    style F fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
+ 
+    linkStyle default stroke:#1b4b48,stroke-width:2px
 
-subgraph B["Visual Art Historian (Gemini 2.5 Flash, Vertex AI)"]
-    direction TB
-    B0{"is_artwork gate?"}
-    B1["Attribution (hedged), style, period, condition"]
-
-    B0 -->|Yes| B1
-    B0 -->|No| R["↩ Upload another image"]
-end
-
-R --> A
-B1 --> C{"search_keys"}
-C --> D
-C --> E
-
-subgraph D["Provenance / Legal"]
-    direction TB
-    D0["Shared retrieval:<br/>Wikidata SPARQL, Met API, AIC API, Parallel Search"]
-    D0 --> D1["Compliance Auditor<br/>(skeptic)"]
-    D0 --> D2["Provenance Historian<br/>(advocate)"]
-    D1 -.runs concurrently.- D2
-end
-
-subgraph E["Financial Valuation"]
-    direction TB
-    E0["Shared retrieval:<br/>Wikidata SPARQL, Parallel Search"]
-    E0 --> E1["Conservative Appraiser<br/>(floor)"]
-    E0 --> E2["Bullish Specialist<br/>(ceiling)"]
-    E1 -.runs concurrently.- E2
-end
-
-D1 --> F
-D2 --> F
-E1 --> F
-E2 --> F
-
-subgraph F["Curator (single agent, dual output)"]
-    direction TB
-    F0["Auction House variant"]
-    F1["Public Gallery variant"]
-    F0 -.computed together, instant client-side toggle.- F1
-end
-
-F --> G["Structural disclosure floor:<br/>human-review flags are Python-assigned,<br/>never left to the model's discretion to mention"]
-
-style B fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
-style D fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
-style E fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
-style F fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#000000
 ```
 
 Provenance/Legal and Financial Valuation run **concurrently**
