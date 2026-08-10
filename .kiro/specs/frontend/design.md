@@ -2,8 +2,7 @@
 
 ## Tech stack
 
-React + Vite, matching the established pattern across prior projects
-(Codex Anatomy, Oikos Ledger, BlastRadius, Patchnote). Tailwind for
+React + Vite for the frontend. Tailwind for
 styling. No additional framework assumptions beyond what's already
 implied by `frontend/` in the repo layout.
 
@@ -207,6 +206,4 @@ Given hackathon time constraints, prioritize:
   logic (the single most important visual behavior)
 - A basic integration/smoke test that the upload flow reaches
   `ResultsView` given a mocked API response
-- Manual visual verification of the rest, given time pressure —
-  flag if you want more automated coverage and we can revisit
-  priorities
+- Manual visual verification of the rest
