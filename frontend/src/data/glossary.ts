@@ -28,6 +28,7 @@ const glossary: Record<string, string> = {
   "adoration of the magi": "Also known as the Adoration of the Kings or the Visitation of the Wise Men — is the name traditionally given to a popular subject in the Nativity of Jesus in art.",
   "sienese school": "The Sienese school of painting flourished in Siena, Italy, between the 13th and 15th centuries.",
   "madonna and child": "Is a depiction of the Virgin and Child painted by Duccio di Buoninsegna, one of the most influential artists of the late 13th and early 14th centuries.",
+  "gentile da fabriano": "Was an Italian painter known for his participation in the International Gothic pictorial style.",
 
   // Provenance / Legal
   provenance: "The documented ownership history of an artwork, from creation to present. Gaps in provenance can indicate theft, looting, or disputed ownership.",
