@@ -118,7 +118,9 @@ class ComplianceAuditorOutput(BaseModel):
     """
 
     identified_gaps: list[OwnershipGap] = Field(default_factory=list)
-    risk_level: Literal["low", "moderate", "red_flag"] = Field(
+    risk_level: Literal[
+        "low", "moderate", "red_flag", "cannot_determine_insufficient_object_data"
+    ] = Field(
         ..., description="Overall risk assessment from the skeptic perspective"
     )
     reasoning: str = Field(
@@ -146,7 +148,9 @@ class ProvenanceHistorianOutput(BaseModel):
             "to exculpatory evidence."
         ),
     )
-    risk_level: Literal["low", "moderate", "red_flag"] = Field(
+    risk_level: Literal[
+        "low", "moderate", "red_flag", "cannot_determine_insufficient_object_data"
+    ] = Field(
         ..., description="Independent risk assessment from the advocate perspective"
     )
 
@@ -785,6 +789,12 @@ YOUR TASK:
      illicit transfer
    - "red_flag": Gaps coincide with high-risk periods AND retrieved evidence
      suggests possible confiscation, looting, or forced sale
+   - "cannot_determine_insufficient_object_data": The evidence available cannot be
+     tied to the specific object being assessed — the standard object-specific
+     provenance test (per AAM/AAMD guidelines) cannot be applied. Use this when
+     operating in artist-general evidence scope and you cannot ground your judgment
+     in object-specific data. This is NOT a moderate risk — it means the question
+     cannot yet be answered.
 4. Provide your reasoning — be specific about which evidence supports your assessment.
    Do NOT assert a theft/plunder flag unless specific retrieved evidence supports it.
 
@@ -861,6 +871,12 @@ YOUR TASK:
      evidence of illicit transfer
    - "red_flag": Evidence directly suggests confiscation, looting, or forced sale
      that cannot be explained away by historical norms
+   - "cannot_determine_insufficient_object_data": The evidence available cannot be
+     tied to the specific object being assessed — the standard object-specific
+     provenance test (per AAM/AAMD guidelines) cannot be applied. Use this when
+     operating in artist-general evidence scope and you cannot ground your judgment
+     in object-specific data. This is NOT a moderate risk — it means the question
+     cannot yet be answered.
 4. Do NOT dismiss a genuine red flag just to provide a hopeful reading — your role
    is to contextualize, not to exonerate.
 
@@ -920,13 +936,27 @@ DISTINCT works by this artist, not one object's provenance. You MUST:
   different [entity: ...] tags — those describe DIFFERENT artworks.
 - Frame ALL reasoning as general artist-level risk context: "this artist has
   documented instances of..." NOT "this artwork was..."
-- Default to risk_level "moderate" rather than "red_flag" when the assessment
-  cannot be tied to the specific object being assessed. Only use "red_flag"
-  if essentially every retrieved work by this artist has plunder/theft history,
-  making it genuinely impossible to express appropriate uncertainty otherwise.
 - If you see ownership records, collection histories, or events: state which
   specific entity they came from, and explicitly note they may not apply to
-  the artwork in question."""
+  the artwork in question.
+
+RISK_LEVEL GUIDANCE FOR ARTIST-GENERAL MODE:
+Standard museum provenance review (per AAM/AAMD Nazi-era guidelines) uses an
+OBJECT-SPECIFIC test: was THIS piece created pre-1946, acquired post-1932, did it
+change hands 1933-1945, and was it plausibly in continental Europe? Without
+object-specific data, that test CANNOT be applied. Therefore:
+- Use "cannot_determine_insufficient_object_data" when the retrieved evidence
+  cannot be tied to the specific object being assessed — this is the honest,
+  professionally-grounded answer when the standard test cannot be applied, not
+  a forced guess. This is the DEFAULT for artist-general mode.
+- Use "low"/"moderate"/"red_flag" ONLY if you have a genuine, stated basis for
+  that judgment even without object-specific data (e.g. essentially every
+  retrieved work by this artist shares the same clear pattern). State that
+  basis explicitly in your reasoning.
+- Do NOT default to "red_flag" just because the artist has SOME documented
+  plunder history — if that history is about other specific objects and cannot
+  be connected to the piece being assessed, the correct answer is
+  "cannot_determine_insufficient_object_data", not a confident red_flag."""
 
 
 # ---------------------------------------------------------------------------
@@ -946,7 +976,9 @@ def synthesize_title_risk(
 
     Rules:
     - requires_human_review = True if risk_levels differ OR either is "red_flag"
-    - synthesis_summary states explicitly whether sub-agents agree or disagree
+      OR either is "cannot_determine_insufficient_object_data"
+    - synthesis_summary states explicitly whether sub-agents agree or disagree,
+      with distinct text for the cannot-determine case vs. a genuine disagreement
 
     Args:
         auditor: Output from the Compliance Auditor.
@@ -958,15 +990,46 @@ def synthesize_title_risk(
     """
     from loguru import logger
 
+    CANNOT_DETERMINE = "cannot_determine_insufficient_object_data"
+
     # Determine if human review is required
     levels_disagree = auditor.risk_level != historian.risk_level
     either_red_flag = (
         auditor.risk_level == "red_flag" or historian.risk_level == "red_flag"
     )
-    requires_human_review = levels_disagree or either_red_flag
+    either_cannot_determine = (
+        auditor.risk_level == CANNOT_DETERMINE
+        or historian.risk_level == CANNOT_DETERMINE
+    )
+    requires_human_review = levels_disagree or either_red_flag or either_cannot_determine
 
     # Build synthesis summary
-    if auditor.risk_level == historian.risk_level:
+    if either_cannot_determine:
+        # Distinct text for cannot-determine — NOT the same as disagreement
+        if auditor.risk_level == CANNOT_DETERMINE and historian.risk_level == CANNOT_DETERMINE:
+            synthesis_summary = (
+                "Both sub-agents report: CANNOT DETERMINE — insufficient object-specific "
+                "data. Standard provenance due-diligence practice (per AAM/AAMD guidelines) "
+                "requires object-specific information to apply the standard test (created "
+                "pre-1946, acquired post-1932, changed hands 1933-1945, plausibly in "
+                "continental Europe). That information is not available from the general "
+                "artist-level evidence retrieved. Object-specific research is needed before "
+                "this question can be answered."
+            )
+        else:
+            # One cannot-determine, one completed assessment
+            determined_agent = "Provenance Historian" if auditor.risk_level == CANNOT_DETERMINE else "Compliance Auditor"
+            determined_level = historian.risk_level if auditor.risk_level == CANNOT_DETERMINE else auditor.risk_level
+            undetermined_agent = "Compliance Auditor" if auditor.risk_level == CANNOT_DETERMINE else "Provenance Historian"
+            synthesis_summary = (
+                f"{undetermined_agent} reports: CANNOT DETERMINE — insufficient "
+                f"object-specific data to apply the standard provenance test (per "
+                f"AAM/AAMD guidelines). {determined_agent} independently assessed: "
+                f"{determined_level.upper()}. Because one assessment could not be "
+                f"completed without object-specific data, further research is recommended "
+                f"before relying on either conclusion alone."
+            )
+    elif auditor.risk_level == historian.risk_level:
         if auditor.risk_level == "low":
             synthesis_summary = (
                 "Both sub-agents agree: LOW risk. No significant ownership gaps "

@@ -132,7 +132,7 @@ class TestGetSelectableVariantConfig:
         config, variant = get_selectable_variant_config("curator")
         assert isinstance(config, SelectableVariantConfig)
         assert config.temperature == 0.6
-        assert config.max_output_tokens == 4096
+        assert config.max_output_tokens == 8192
         assert config.default_variant == "public_gallery"
         assert isinstance(variant, SelectableVariant)
         assert variant.name == "Public Gallery Docent"

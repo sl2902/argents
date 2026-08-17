@@ -190,6 +190,22 @@ PROVENANCE & LEGAL ASSESSMENT:
 - Requires human review: {tr.requires_human_review}
 - Synthesis summary: {tr.synthesis_summary}"""
 
+    # Add explicit guidance when cannot_determine state is present
+    _CANNOT_DETERMINE = "cannot_determine_insufficient_object_data"
+    if (
+        tr.compliance_auditor.risk_level == _CANNOT_DETERMINE
+        or tr.provenance_historian.risk_level == _CANNOT_DETERMINE
+    ):
+        provenance_context += """
+
+NOTE ON "cannot_determine_insufficient_object_data" RISK LEVEL:
+This means the provenance assessment COULD NOT BE COMPLETED — not that a
+moderate or low risk was found. Do NOT characterize this as "the provenance
+appears largely clear" or "moderate concerns exist." Instead, state plainly
+that object-specific provenance research is still needed before this question
+can be answered. The honest framing is: "further research is required" — not
+a softened version of a finding that was never actually made."""
+
     # --- Variant-specific valuation instructions ---
     if variant_name == "auction_house":
         valuation_context = f"""\

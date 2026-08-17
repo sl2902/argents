@@ -1315,3 +1315,184 @@ class TestParallelSearchFiltering:
         )
         assert _is_relevant_parallel_hit(hit, ["adele"]) is True
         assert _is_relevant_parallel_hit(hit, ["rembrandt"]) is False
+
+
+# ---------------------------------------------------------------------------
+# TestCannotDetermineState — new risk_level value
+# ---------------------------------------------------------------------------
+
+
+class TestCannotDetermineState:
+    """Tests for the cannot_determine_insufficient_object_data risk_level."""
+
+    CANNOT_DETERMINE = "cannot_determine_insufficient_object_data"
+
+    def _make_bundle(self, sample_search_keys) -> EvidenceBundle:
+        return EvidenceBundle(
+            retrieved_facts=[
+                RetrievedFact(
+                    claim="Artist has documented works in various collections",
+                    source_url="https://www.wikidata.org/wiki/Q999",
+                    source_type="wikidata",
+                ),
+            ],
+            query_search_keys=sample_search_keys,
+            sources_queried=["wikidata"],
+            sources_failed=[],
+            evidence_scope="artist_general",
+        )
+
+    # --- Schema acceptance tests ---
+
+    def test_compliance_auditor_accepts_cannot_determine(self):
+        """ComplianceAuditorOutput schema accepts the new risk_level value."""
+        output = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level=self.CANNOT_DETERMINE,
+            reasoning="Cannot determine — insufficient object-specific data.",
+        )
+        assert output.risk_level == self.CANNOT_DETERMINE
+
+    def test_provenance_historian_accepts_cannot_determine(self):
+        """ProvenanceHistorianOutput schema accepts the new risk_level value."""
+        output = ProvenanceHistorianOutput(
+            contextual_notes="Object-specific provenance research needed.",
+            cited_evidence=[],
+            risk_level=self.CANNOT_DETERMINE,
+        )
+        assert output.risk_level == self.CANNOT_DETERMINE
+
+    # --- Synthesis: both cannot_determine ---
+
+    def test_both_cannot_determine_requires_human_review(self, sample_search_keys):
+        """When both sub-agents cannot determine, requires_human_review is True."""
+        auditor = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level=self.CANNOT_DETERMINE,
+            reasoning="Cannot apply standard test without object-specific data.",
+        )
+        historian = ProvenanceHistorianOutput(
+            contextual_notes="Insufficient data to contextualize.",
+            cited_evidence=[],
+            risk_level=self.CANNOT_DETERMINE,
+        )
+        bundle = self._make_bundle(sample_search_keys)
+
+        result = synthesize_title_risk(auditor, historian, bundle)
+
+        assert result.requires_human_review is True
+        assert "cannot determine" in result.synthesis_summary.lower()
+        # Must NOT use disagreement language
+        assert "disagree" not in result.synthesis_summary.lower()
+
+    # --- Synthesis: one cannot_determine, one low ---
+
+    def test_auditor_cannot_determine_historian_low_requires_human_review(
+        self, sample_search_keys
+    ):
+        """cannot_determine paired with low still requires human review — doesn't average to 'fine'."""
+        auditor = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level=self.CANNOT_DETERMINE,
+            reasoning="Cannot apply standard test.",
+        )
+        historian = ProvenanceHistorianOutput(
+            contextual_notes="Artist generally has clean records.",
+            cited_evidence=[],
+            risk_level="low",
+        )
+        bundle = self._make_bundle(sample_search_keys)
+
+        result = synthesize_title_risk(auditor, historian, bundle)
+
+        assert result.requires_human_review is True
+        # Summary should mention cannot determine, not disagreement
+        assert "cannot determine" in result.synthesis_summary.lower()
+        assert "disagree" not in result.synthesis_summary.lower()
+
+    def test_historian_cannot_determine_auditor_low_requires_human_review(
+        self, sample_search_keys
+    ):
+        """Reverse case: historian cannot determine, auditor says low."""
+        auditor = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level="low",
+            reasoning="No evidence of issues.",
+        )
+        historian = ProvenanceHistorianOutput(
+            contextual_notes="Cannot contextualize without object data.",
+            cited_evidence=[],
+            risk_level=self.CANNOT_DETERMINE,
+        )
+        bundle = self._make_bundle(sample_search_keys)
+
+        result = synthesize_title_risk(auditor, historian, bundle)
+
+        assert result.requires_human_review is True
+        assert "cannot determine" in result.synthesis_summary.lower()
+        assert "disagree" not in result.synthesis_summary.lower()
+
+    # --- Synthesis: one cannot_determine, one red_flag ---
+
+    def test_cannot_determine_with_red_flag_requires_human_review(
+        self, sample_search_keys
+    ):
+        """cannot_determine paired with red_flag requires human review."""
+        auditor = ComplianceAuditorOutput(
+            identified_gaps=[
+                OwnershipGap(
+                    gap_description="Gap during WWII",
+                    approximate_window="1938–1945",
+                    is_high_risk_period=True,
+                )
+            ],
+            risk_level="red_flag",
+            reasoning="Strong plunder evidence.",
+        )
+        historian = ProvenanceHistorianOutput(
+            contextual_notes="Cannot apply standard test.",
+            cited_evidence=[],
+            risk_level=self.CANNOT_DETERMINE,
+        )
+        bundle = self._make_bundle(sample_search_keys)
+
+        result = synthesize_title_risk(auditor, historian, bundle)
+
+        assert result.requires_human_review is True
+        # Cannot-determine takes priority in summary framing
+        assert "cannot determine" in result.synthesis_summary.lower()
+
+    # --- Synthesis summary is distinct from disagreement ---
+
+    def test_cannot_determine_summary_distinct_from_disagreement(
+        self, sample_search_keys
+    ):
+        """The cannot-determine summary must be distinguishable from genuine disagreement."""
+        # cannot_determine case
+        auditor_cd = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level=self.CANNOT_DETERMINE,
+            reasoning="Cannot determine.",
+        )
+        historian_low = ProvenanceHistorianOutput(
+            contextual_notes="Clean records.",
+            cited_evidence=[],
+            risk_level="low",
+        )
+        bundle = self._make_bundle(sample_search_keys)
+        result_cd = synthesize_title_risk(auditor_cd, historian_low, bundle)
+
+        # genuine disagreement case
+        auditor_mod = ComplianceAuditorOutput(
+            identified_gaps=[],
+            risk_level="moderate",
+            reasoning="Some concerns.",
+        )
+        result_disagree = synthesize_title_risk(auditor_mod, historian_low, bundle)
+
+        # They must have different text
+        assert result_cd.synthesis_summary != result_disagree.synthesis_summary
+        # cannot-determine uses "cannot determine" language
+        assert "cannot determine" in result_cd.synthesis_summary.lower()
+        # disagreement uses "disagree" language
+        assert "disagree" in result_disagree.synthesis_summary.lower()

@@ -116,9 +116,11 @@ financial_valuation:
 curator:
   temperature: 0.6  # uses descriptive prose,
                      # not factual claims, so natural variation is fine
-  max_output_tokens: 4096  # exhibition copy / wall labels + structured JSON
+  max_output_tokens: 8192  # exhibition copy / wall labels + structured JSON
                             # overhead — needs room for narrative + wall_label
-                            # + disclosures in one response
+                            # + disclosures in one response. Increased from 4096
+                            # after observing truncation in structured output mode
+                            # when prompts include conditional guidance blocks.
   variants:
     auction_house:
       name: "Auction House Cataloguer"

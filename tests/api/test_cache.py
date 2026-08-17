@@ -192,6 +192,7 @@ class TestCacheStorage:
             ),
             provenance_synthesis_summary="All clear",
             provenance_requires_human_review=False,
+            provenance_evidence_scope="specific_object",
             conservative_appraiser=ConservativeAppraiserOutput(
                 floor_estimate_usd=10000.0,
                 methodology="Comparable sales",
@@ -210,6 +211,7 @@ class TestCacheStorage:
             ),
             corridor_summary="$10k-$40k",
             valuation_requires_human_review=False,
+            valuation_evidence_scope="specific_object",
             curator_auction_house=curator,
             curator_public_gallery=curator,
             provenance_evidence_sample=[],

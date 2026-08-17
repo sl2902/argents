@@ -6,6 +6,8 @@ evidence sampling/truncation that never mutates the underlying PipelineResult.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 from artgents.agents.financial_valuation import (
@@ -56,6 +58,7 @@ class AnalyzeResponse(BaseModel):
     provenance_historian: ProvenanceHistorianOutput
     provenance_synthesis_summary: str
     provenance_requires_human_review: bool
+    provenance_evidence_scope: Literal["specific_object", "artist_general"]
 
     # Valuation - both sub-agents
     conservative_appraiser: ConservativeAppraiserOutput
@@ -63,6 +66,7 @@ class AnalyzeResponse(BaseModel):
     valuation_corridor: ValuationCorridor
     corridor_summary: str
     valuation_requires_human_review: bool
+    valuation_evidence_scope: Literal["specific_object", "artist_general"]
 
     # Curator - both variants
     curator_auction_house: CuratorVariantOutput
@@ -147,11 +151,13 @@ def build_analyze_response(pipeline_result) -> AnalyzeResponse:
         provenance_historian=r.title_risk.provenance_historian,
         provenance_synthesis_summary=r.title_risk.synthesis_summary,
         provenance_requires_human_review=r.title_risk.requires_human_review,
+        provenance_evidence_scope=r.title_risk.evidence_bundle.evidence_scope,
         conservative_appraiser=r.valuation.conservative_appraiser,
         bullish_specialist=r.valuation.bullish_specialist,
         valuation_corridor=r.valuation.valuation_corridor,
         corridor_summary=r.valuation.corridor_summary,
         valuation_requires_human_review=r.valuation.requires_human_review,
+        valuation_evidence_scope=r.valuation.evidence.evidence_scope,
         curator_auction_house=CuratorVariantOutput(
             exhibition_narrative=ah.exhibition_narrative,
             wall_label=ah.wall_label,
