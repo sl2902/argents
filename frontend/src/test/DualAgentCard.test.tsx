@@ -103,16 +103,16 @@ describe('DualAgentCard VerdictBadge states', () => {
 
   it('renders fourth state distinctly from all three existing states', () => {
     // Render all four states and verify they have different colors
-    const { container: c1 } = render(
+    render(
       <DualAgentCard {...defaultProps} leftVerdict="low" rightVerdict="low" />
     );
-    const { container: c2 } = render(
+    render(
       <DualAgentCard {...defaultProps} leftVerdict="moderate" rightVerdict="moderate" />
     );
-    const { container: c3 } = render(
+    render(
       <DualAgentCard {...defaultProps} leftVerdict="red_flag" rightVerdict="red_flag" />
     );
-    const { container: c4 } = render(
+    render(
       <DualAgentCard
         {...defaultProps}
         leftVerdict="cannot_determine_insufficient_object_data"
