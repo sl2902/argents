@@ -1,5 +1,18 @@
 import { AnalyzeResponse } from '../types/api';
 
+// ---------------------------------------------------------------------------
+// Narration playback configuration (centralized)
+// ---------------------------------------------------------------------------
+
+/**
+ * Playback speed for demo narration audio.
+ * 1.0 = normal, 0.8 = slower, 1.2 = 20% faster, etc.
+ * Applies to both PipelineExplainer and ResultsWalkthrough audio.
+ */
+export const NARRATION_PLAYBACK_RATE = 1.3;
+
+// ---------------------------------------------------------------------------
+
 export class AnalyzeError extends Error {
   status: number;
   stage: string;

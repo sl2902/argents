@@ -1,0 +1,42 @@
+[
+  {
+    "stage_key": "visual_analysis",
+    "message": "Analyzing artwork..."
+  },
+  {
+    "stage_key": "concurrent_research",
+    "message": "Researching provenance and valuing artwork (running concurrently)..."
+  },
+  {
+    "stage_key": "concurrent_research",
+    "message": "Retrieved 50 comparable sales for valuation"
+  },
+  {
+    "stage_key": "concurrent_research",
+    "message": "Retrieved 44 provenance facts from 4 sources"
+  },
+  {
+    "stage_key": "concurrent_research",
+    "message": "Valuation sub-agents completed their estimates"
+  },
+  {
+    "stage_key": "concurrent_research",
+    "message": "Provenance sub-agents completed their assessments"
+  },
+  {
+    "stage_key": "curator",
+    "message": "Writing exhibition copy..."
+  },
+  {
+    "stage_key": "curator",
+    "message": "Public Gallery copy complete"
+  },
+  {
+    "stage_key": "curator",
+    "message": "Auction House copy complete"
+  },
+  {
+    "stage_key": "curator",
+    "message": "Analysis complete."
+  }
+]

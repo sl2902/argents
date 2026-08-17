@@ -1,0 +1,218 @@
+{
+  "attribution": "Attributed to Gentile da Fabriano",
+  "period_style": "Early 15th century, International Gothic",
+  "composition_analysis": "The composition is vertically oriented, depicting the Adoration of the Magi. The Virgin Mary, clad in a rich blue robe, holds the Christ Child on a raised platform to the right. A king kneels before them, offering a gift, while two other kings stand behind him, richly dressed in gold brocade. To the far left, two figures in similar attire converse. The background features a stylized rocky landscape with small trees on the left, and an elaborate architectural structure with a balcony on the right, suggesting a stable or palace setting. The figures are arranged in a somewhat hierarchical and processional manner, with extensive use of gold for halos, garments, and the background, creating a sense of opulence and spiritual grandeur. The palette is dominated by deep blues, reds, and the pervasive gold, contrasted with softer greens and browns in the landscape and the pale skin tones of the figures. Brushwork is fine and detailed, particularly in the intricate patterns of the textiles and the delicate facial features.",
+  "condition_notes": "The painting exhibits significant craquelure across the entire surface, indicative of age and material stress. There are numerous areas of paint loss, particularly visible in the gold leaf background and the frame, revealing the underlying ground. Some abrasions and discolored areas are present, especially along the edges and in the darker sections of the landscape. The frame itself shows considerable wear, with flaking and loss of its gilded surface, exposing the gesso and wood beneath. The overall impression is one of an aged work that has undergone some degree of wear and possibly minor restoration over time, though no major overpainting or structural repairs are immediately evident from the images.",
+  "stylistic_authenticity_notes": "High confidence this is an Italian International Gothic painting from the early 15th century. The rich use of gold, intricate punchwork in the halos and garments, detailed patterns on textiles, idealized facial types, and the blend of naturalistic detail with decorative stylization are all highly characteristic of this period and region. The subject matter and compositional approach are also consistent with works from this era. Moderate-low confidence in the specific attribution to Gentile da Fabriano. While the visual features, including the opulent aesthetic, the delicate rendering of figures, and the detailed ornamentation, are strongly consistent with his known oeuvre and the style he championed, no legible signature or inscription is visible in the image to definitively confirm the attribution. The attribution is based purely on strong stylistic similarities to documented works by Gentile da Fabriano, such as his 'Adoration of the Magi' in the Uffizi, but without direct evidence, it remains an attribution rather than a confirmed fact. There are no apparent anomalies or anachronistic elements that conflict with the claimed artist or period.",
+  "compliance_auditor": {
+    "identified_gaps": [],
+    "risk_level": "cannot_determine_insufficient_object_data",
+    "reasoning": "The provided evidence is at the artist-general level (Gentile da Fabriano, entity Q3842739) and does not pertain to a specific, identified artwork. Therefore, the standard object-specific provenance test, which requires knowing if THIS piece was created pre-1946, acquired post-1932, changed hands 1933-1945, and was plausibly in continental Europe, cannot be applied. Without object-specific data, it is not possible to identify ownership gaps for the artwork being assessed or to determine if any such gaps fall within high-risk periods.\n\nHowever, it is noted that works by this artist have documented associations with high-risk periods. Specifically, evidence indicates that an artwork by Gentile da Fabriano was 'In collection: Führermuseum' (Evidence 9) and subsequently 'In collection: Munich Central Collecting Point' (Evidence 26). These entries suggest that at least one work by the artist was involved in WWII-era displacement or looting and subsequent recovery. While this establishes a general risk context for the artist's oeuvre, this information cannot be directly connected to the specific, unidentified artwork currently under assessment. Consequently, the risk level for this particular object cannot be determined with the available artist-general data."
+  },
+  "provenance_historian": {
+    "contextual_notes": "While no specific artwork is being assessed, the provenance records for works attributed to Gentile da Fabriano reveal varied histories. For one specific artwork identified as http://www.wikidata.org/entity/Q3842739, the collection history includes the 'Führermuseum' and the 'Munich Central Collecting Point'. The presence of an artwork in the 'Führermuseum' indicates a strong likelihood of Nazi-era spoliation, as this was a collection assembled by the Nazi regime, often through confiscation or forced sales. Its subsequent presence in the 'Munich Central Collecting Point' suggests it was recovered by Allied forces after World War II, which is consistent with spoliated art. This particular artwork also shows ownership by individuals like Georges Brauer (? to 1900-01-01), Isabella Stewart Gardner (? to 1924-01-01), Theodore M. Davis (1900-01-01 to 1915-01-01), Charles Sedelmeyer (? to ?), and John Sanford (1835-01-01 to 1855-01-01), and later by the Metropolitan Museum of Art (1930-01-01 to ?), alongside numerous other institutional collections. Some of these ownership records for http://www.wikidata.org/entity/Q3842739 have unspecified start or end dates, which are not uncommon for older artworks, especially those in private hands before modern cataloging standards. However, these typical historical gaps are overshadowed by the direct evidence of Nazi-era involvement for this specific piece. This artwork also underwent a 'cutting' event in 1830. Other documented works by the artist, such as the 'Madonna and Child with Angels' at The Metropolitan Museum of Art and the 'Madonna and Child with Two Saints' in the Pinacoteca Malaspina, have their own distinct provenances, which are not detailed here in a manner that suggests similar issues. Given the artist-general scope, this information highlights a significant red flag associated with at least one documented work by Gentile da Fabriano, but does not necessarily apply to all works by the artist.",
+    "cited_evidence": [
+      {
+        "claim": "Owned by Georges Brauer (? to 1900-01-01)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Owned by Isabella Stewart Gardner (? to 1924-01-01)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Owned by Theodore M. Davis (1900-01-01 to 1915-01-01)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Owned by Metropolitan Museum of Art (1930-01-01 to ?)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Owned by Charles Sedelmeyer (? to ?)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Owned by John Sanford (1835-01-01 to 1855-01-01)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "In collection: Führermuseum",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "In collection: Munich Central Collecting Point",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Significant event: cutting (1830-01-01)",
+        "source_url": "http://www.wikidata.org/entity/Q3842739",
+        "source_type": "wikidata",
+        "source_entity_id": "Q3842739"
+      },
+      {
+        "claim": "Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) - Madonna and Child with Angels - The Metropolitan Museum of Art: # Madonna and Child with Angels [Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio)](https://www.metmuseum.org/art/collection/search?artist=Gentile+da+Fabriano+%28Gentile+di+Niccol%C3%B2+di+Giovanni+di+Massio%29) Italian Not on view Although badly damaged, this picture is a rare work by one of the greatest painters of the early fifteenth century. Gentile was born in the town of Fabriano, in the Marches, but his work was in demand from Milan to Rome. ... Madonna and Child with Angels, Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by 1408–died 1427), Tempera on wood, traces of gold ground Public Domain Download Image Share Enlarge Image A slider containing 4 items. Press the down key to skip to the last item. Madonna and Child with Angels, Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by 1408–died 1427), Tempera on wood, traces of gold ground Madonna and Child with Angels, Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by 1408–died 1427), Tempera on wood, traces of gold ground Madonna and Child with Angels, Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by 1408–died 1427), Tempera on wood, traces of gold ground Madonna and Child with Angels, Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by ... Artwork Details Title: Madonna and Child with Angels Artist: Gentile da Fabriano (Gentile di Niccolò di Giovanni di Massio) (Italian, Umbrian, active by 1408–died 1427) Medium: Tempera on wood, traces of gold ground Dimensions: 33 3/4 x 20 in. (85.7 x 50.8 cm) Classification: Paintings",
+        "source_url": "https://www.metmuseum.org/art/collection/search/436452",
+        "source_type": "parallel_search",
+        "source_entity_id": null
+      },
+      {
+        "claim": "Madonna and Child with Two Saints (Gentile da Fabriano) - Wikipedia: _Find sources:_ [\"Madonna and Child with Two Saints\" Gentile da Fabriano](https://www.google.com/search?as_eq=wikipedia&q=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano) – [news](https://www.google.com/search?tbm=nws&q=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano+-wikipedia&tbs=ar:1) **·** [newspapers](https://www.google.com/search?&q=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano&tbs=bkt:s&tbm=bks) **·** [books](https://www.google.com/search?tbs=bks:1&q=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano+-wikipedia) **·** [scholar](https://scholar.google.com/scholar?q=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano) **·** [JSTOR](https://www.jstor.org/action/doBasicSearch?Query=%22Madonna+and+Child+with+Two+Saints%22+Gentile+da+Fabriano&acc=on&wc=on) _( November 2019 )_ _( Learn how and when to remove this message )_ | | --- | --- | _Madonna and Child with Two Saints_ (c. 1390–1395) by Gentile da Fabriano _**Madonna and Child with Two Saints**_ or _**Madonna and Child in Glory between Saint Francis and Saint Clare**_ is a c.1390–1395 tempera and gold on panel painting by the Italian artist Gentile da Fabriano , now in the Pinacoteca Malaspina in Pavia . It is one of the earliest surviving works attributed to the artist. ... # References Gentile da Fabriano | | --- | --- | |Paintings |* _Madonna and Child with Two Saints_ (c. 1390–1395)",
+        "source_url": "https://en.wikipedia.org/wiki/Madonna_and_Child_with_Two_Saints_%28Gentile_da_Fabriano%29",
+        "source_type": "parallel_search",
+        "source_entity_id": null
+      }
+    ],
+    "risk_level": "cannot_determine_insufficient_object_data"
+  },
+  "provenance_synthesis_summary": "Both sub-agents report: CANNOT DETERMINE — insufficient object-specific data. Standard provenance due-diligence practice (per AAM/AAMD guidelines) requires object-specific information to apply the standard test (created pre-1946, acquired post-1932, changed hands 1933-1945, plausibly in continental Europe). That information is not available from the general artist-level evidence retrieved. Object-specific research is needed before this question can be answered.",
+  "provenance_requires_human_review": true,
+  "provenance_evidence_scope": "artist_general",
+  "conservative_appraiser": {
+    "floor_estimate_usd": 50000.0,
+    "methodology": "The floor estimate is derived from the lowest end of the Sotheby's estimate for two panels by Gentile da Fabriano, 'Saint Peter and Saint Bartholomew,' which was $250,000 - $350,000 USD. Given that the artwork being assessed is only 'Attributed to' the artist, and considering the complete absence of actual sale prices in the provided evidence, a substantial discount is applied. This discount accounts for the uncertainty of attribution, the illiquidity of the market for such works, and the need to reflect a distress or liquidation value. A significant reduction from the confirmed work's estimate is necessary to establish a truly conservative floor for an attributed piece, resulting in a floor estimate of $50,000.",
+    "primary_comp": "The Sotheby's estimate of $250,000 - $350,000 USD for two panels, 'Saint Peter and Saint Bartholomew,' by Gentile da Fabriano, serves as the primary reference point.",
+    "confidence": "low"
+  },
+  "bullish_specialist": {
+    "ceiling_estimate_usd": 125000.0,
+    "methodology": "The ceiling estimate is derived from the Sotheby's 2012 estimate for two authenticated panels by Gentile da Fabriano ('Saint Peter' and 'Saint Bartholomew'), which were valued at $250,000 - $350,000. This estimate represents the market potential for significant, authenticated works by the artist. Given that the artwork being assessed is 'Attributed to Gentile da Fabriano,' a significant discount is applied due to the inherent uncertainty of authorship. However, as a bullish specialist, I consider the optimistic scenario where the attribution is strong, the artwork is of high quality, and there is potential for future scholarly confirmation. Therefore, the ceiling is set at a substantial fraction of the estimated value for a single authenticated panel, reflecting its potential if it were to be considered a strong, compelling example of the artist's hand, attracting top-tier collector demand for early 15th-century International Gothic works.",
+    "primary_comp": "The 2012 Sotheby's estimate of $250,000 - $350,000 for two authenticated panels by Gentile da Fabriano ('Saint Peter' and 'Saint Bartholomew') serves as the primary benchmark for the artist's market.",
+    "confidence": "low"
+  },
+  "valuation_corridor": {
+    "low_estimate_usd": 50000.0,
+    "high_estimate_usd": 125000.0
+  },
+  "corridor_summary": "Estimated valuation corridor: $50,000 – $125,000 USD.",
+  "valuation_requires_human_review": true,
+  "valuation_evidence_scope": "artist_general",
+  "curator_auction_house": {
+    "exhibition_narrative": "This devotional panel, attributed to Gentile da Fabriano and dated to the early 15th century, stands as a compelling example of the International Gothic style, a movement characterized by its opulent aesthetic, intricate detail, and blend of naturalism with courtly elegance. The composition, vertically oriented, masterfully depicts the Adoration of the Magi. The Virgin Mary, regally robed in deep blue, cradles the Christ Child upon a raised platform, receiving the homage of the kneeling king. Behind him, two other Magi, resplendently attired in gold brocade, await their turn, their rich garments and halos rendered with extensive gold leaf, creating a sense of spiritual grandeur and material wealth. To the far left, two additional figures, similarly clad, engage in conversation, adding depth to the processional scene. The background transitions from a stylized rocky landscape with delicate trees on the left to an elaborate architectural structure on the right, suggesting a stable or palace setting, a hallmark of the period's narrative complexity.\n\nThe artwork's stylistic characteristics—including the lavish use of gold, intricate punchwork in the halos and garments, detailed textile patterns, idealized facial types, and the blend of naturalistic observation with decorative stylization—are highly consistent with Italian International Gothic painting of the early 15th century. These features strongly align with the known oeuvre of Gentile da Fabriano, particularly his seminal 'Adoration of the Magi' in the Uffizi. However, lacking a visible signature or inscription, the attribution remains based on strong stylistic parallels rather than definitive documentary evidence, thus retaining its 'attributed to' status. No anachronistic elements are present to contradict this assessment.\n\nCondition-wise, the panel exhibits significant craquelure across its surface, indicative of its considerable age and material history. Areas of paint loss are discernible, particularly in the gold leaf background and along the frame, revealing the underlying ground. Abrasions and discolored sections are present, especially at the edges and within the darker landscape passages. The frame itself shows wear, with flaking and loss of its gilded surface. These elements collectively attest to the work's antiquity and journey through time.\n\nRegarding provenance, it is critical to note that object-specific research is required to ascertain a complete ownership history for this particular work. Current analysis, based on artist-general data, indicates that the risk level for provenance 'cannot be determined' due to insufficient object-specific information. While works attributed to Gentile da Fabriano have historically been associated with high-risk periods, including involvement with the 'Führermuseum' and subsequent recovery at the 'Munich Central Collecting Point,' this information pertains to other documented pieces by the artist and cannot be directly applied to the present work. Therefore, comprehensive object-specific due diligence remains outstanding.\n\nIn the current market, this panel, Attributed to Gentile da Fabriano, is estimated to fall within a valuation corridor of $50,000 – $125,000 USD. This estimate reflects the inherent challenges of attributing works from this period and the market's response to pieces lacking definitive documentary evidence. While authenticated works by the artist command significantly higher figures, this valuation accounts for the strong stylistic consistency with his oeuvre, balanced against the 'attributed to' status and the prevailing liquidity for such early Italian panels.",
+    "wall_label": "Attributed to Gentile da Fabriano\nEarly 15th Century, International Gothic\n\nThis early 15th-century panel, Attributed to Gentile da Fabriano, exemplifies the International Gothic style through its opulent depiction of the Adoration of the Magi. Richly adorned figures, intricate gold leaf, and a blend of naturalistic detail with decorative stylization characterize this vertically oriented composition. While exhibiting signs of age, its detailed brushwork and vibrant palette remain evident, offering a glimpse into the artistic grandeur of the period. Provenance research for this specific work is ongoing.",
+    "suggested_title": "Attributed to Gentile da Fabriano, The Adoration of the Magi (International Gothic)",
+    "disclosures": [
+      "Provenance: Both sub-agents report: CANNOT DETERMINE — insufficient object-specific data. Standard provenance due-diligence practice (per AAM/AAMD guidelines) requires object-specific information to apply the standard test (created pre-1946, acquired post-1932, changed hands 1933-1945, plausibly in continental Europe). That information is not available from the general artist-level evidence retrieved. Object-specific research is needed before this question can be answered.",
+      "Valuation: Estimated valuation corridor: $50,000 – $125,000 USD."
+    ]
+  },
+  "curator_public_gallery": {
+    "exhibition_narrative": "Step into a moment of radiant devotion with this captivating panel, \"Adoration of the Magi (International Gothic),\" a work attributed to the masterful hand of Gentile da Fabriano from the early 15th century. This painting offers a window into the opulent and spiritually charged world of the International Gothic style, a period renowned for its lavish detail and decorative splendor.\n\nThe scene unfolds with a rich tapestry of figures and color. At the heart, the Virgin Mary, draped in a deep blue robe, cradles the Christ Child on a raised platform. Before them, a king kneels in reverence, presenting his gift, while two other majestically robed kings stand nearby, their garments shimmering with gold brocade. To the left, two more figures, similarly adorned, engage in quiet conversation, adding a sense of unfolding drama. The background blends a whimsical rocky landscape with delicate trees on one side, and an elaborate architectural structure suggesting a stable or palace on the other. Every detail, from the intricate patterns of the textiles to the delicate facial features, is rendered with exquisite precision, characteristic of the fine brushwork of the era. The pervasive use of gold—for halos, garments, and the very background—creates an atmosphere of celestial grandeur and earthly wealth, a hallmark of the International Gothic style.\n\nOver the centuries, this painting has developed a beautiful craquelure across its surface, a testament to its age and journey through time. While some areas of paint loss and wear are visible, particularly in the gold leaf, these marks tell the story of a cherished object that has withstood the passage of time. The attribution to Gentile da Fabriano is based on strong stylistic similarities to his documented works, such as his famous 'Adoration of the Magi' in the Uffizi, showcasing the opulent aesthetic and delicate rendering he championed. However, without a visible signature, it remains an attribution rather than a definitive confirmation. The painting’s provenance, or ownership history, is currently undergoing further review, and object-specific research is still needed to fully understand its past.",
+    "wall_label": "This vibrant panel, \"Adoration of the Magi (International Gothic),\" attributed to Gentile da Fabriano, transports us to the early 15th century. It exemplifies the International Gothic style with its rich colors, intricate details, and extensive use of gold. The Virgin Mary and Christ Child receive the homage of the three kings, whose luxurious garments and halos gleam. Though time has left its mark, the painting’s beauty endures. Its attribution is based on strong stylistic similarities to Gentile da Fabriano's known work, and its ownership history is currently undergoing further research.",
+    "suggested_title": "Adoration of the Magi (International Gothic)",
+    "disclosures": [
+      "This work's provenance is undergoing further review.",
+      "This work's market valuation carries significant uncertainty pending further research."
+    ]
+  },
+  "provenance_evidence_sample": [
+    {
+      "description": "Owned by Georges Brauer (? to 1900-01-01)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "Owned by Isabella Stewart Gardner (? to 1924-01-01)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "Owned by Theodore M. Davis (1900-01-01 to 1915-01-01)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "Owned by Metropolitan Museum of Art (1930-01-01 to ?)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "Owned by Charles Sedelmeyer (? to ?)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "Owned by John Sanford (1835-01-01 to 1855-01-01)",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "In collection: Diocesan Museum of Velletri",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "In collection: Q214867",
+      "source_url": "http://www.wikidata.org/entity/Q3842739",
+      "source_type": "wikidata"
+    }
+  ],
+  "valuation_evidence_sample": [
+    {
+      "description": "'Madonna'",
+      "source_url": "http://www.wikidata.org/entity/Q3842477",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Adoration of the Magi'",
+      "source_url": "http://www.wikidata.org/entity/Q1055117",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Virgin and Child'",
+      "source_url": "http://www.wikidata.org/entity/Q3842478",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Annunciation'",
+      "source_url": "http://www.wikidata.org/entity/Q3618178",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Crucifixion'",
+      "source_url": "http://www.wikidata.org/entity/Q3698187",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Adoration of the Child'",
+      "source_url": "http://www.wikidata.org/entity/Q3605567",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Presentation of Christ in the Temple'",
+      "source_url": "http://www.wikidata.org/entity/Q3910907",
+      "source_type": "wikidata"
+    },
+    {
+      "description": "'Madonna with Child'",
+      "source_url": "http://www.wikidata.org/entity/Q3842475",
+      "source_type": "wikidata"
+    }
+  ],
+  "total_provenance_facts": 44,
+  "total_valuation_comps": 50,
+  "timings": {
+    "visual_analysis_ms": 20941,
+    "stage_2_wall_clock_ms": 41818,
+    "provenance_ms": 41818,
+    "valuation_ms": 25882,
+    "curator_ms": 15588,
+    "total_ms": 78349
+  }
+}

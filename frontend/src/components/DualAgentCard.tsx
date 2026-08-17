@@ -18,12 +18,32 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     low: 'bg-green-100 text-green-800 border-green-200',
     moderate: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     red_flag: 'bg-red-100 text-red-800 border-red-200',
+    cannot_determine_insufficient_object_data: 'bg-slate-100 text-slate-700 border-slate-300',
     high: 'bg-green-100 text-green-800 border-green-200',
   };
+
+  const displayLabels: Record<string, string> = {
+    low: 'low',
+    moderate: 'moderate',
+    red_flag: 'red flag',
+    cannot_determine_insufficient_object_data: 'cannot determine',
+    high: 'high',
+  };
+
   const colorClass = colors[verdict] || 'bg-gray-100 text-gray-800 border-gray-200';
+  const label = displayLabels[verdict] || verdict.replace('_', ' ');
+  const isCannotDetermine = verdict === 'cannot_determine_insufficient_object_data';
+
   return (
-    <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full border ${colorClass}`}>
-      {verdict.replace('_', ' ')}
+    <span className="inline-flex flex-col items-end gap-0.5">
+      <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full border ${colorClass}`}>
+        {label}
+      </span>
+      {isCannotDetermine && (
+        <span className="text-[10px] text-slate-500 max-w-[160px] text-right leading-tight">
+          Needs object-specific research
+        </span>
+      )}
     </span>
   );
 }

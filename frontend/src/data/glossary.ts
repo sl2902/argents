@@ -29,6 +29,8 @@ const glossary: Record<string, string> = {
   "sienese school": "The Sienese school of painting flourished in Siena, Italy, between the 13th and 15th centuries.",
   "madonna and child": "Is a depiction of the Virgin and Child painted by Duccio di Buoninsegna, one of the most influential artists of the late 13th and early 14th centuries.",
   "gentile da fabriano": "Was an Italian painter known for his participation in the International Gothic pictorial style.",
+  "führermuseum": "Was an unrealized art museum within a cultural complex planned by Adolf Hitler for his hometown, the Austrian city of Linz",
+  "munich central collecting point": "Was a depot used by the Monuments, Fine Arts, and Archives program after the end of the Second World War to process, photograph and redistribute artwork and cultural artifacts that had been confiscated by the Nazis and hidden throughout Germany and Austria.",
 
   // Provenance / Legal
   provenance: "The documented ownership history of an artwork, from creation to present. Gaps in provenance can indicate theft, looting, or disputed ownership.",
@@ -39,6 +41,7 @@ const glossary: Record<string, string> = {
   "red flag": "A documented finding that raises serious concern about an artwork's ownership history or legal status, warranting further investigation.",
   "chain of title": "The complete sequence of documented ownership transfers for an artwork, from creation to current holder.",
   confiscation: "The seizure of property by a government or authority, often used in reference to Nazi-era art theft (1933-1945).",
+  "aam/aamd": "American Alliance of Museums; Association of Art Museum Directors - the two main U.S. professional bodies for museums and museum leadership, respectively.",
 
   // Financial / Auction
   "hammer price": "The final bid price at auction, before buyer's premium and taxes are added. The actual cost to the buyer is typically 20-30% higher.",

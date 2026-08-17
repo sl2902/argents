@@ -6,7 +6,7 @@ export interface OwnershipGap {
 
 export interface ComplianceAuditorOutput {
   identified_gaps: OwnershipGap[];
-  risk_level: 'low' | 'moderate' | 'red_flag';
+  risk_level: 'low' | 'moderate' | 'red_flag' | 'cannot_determine_insufficient_object_data';
   reasoning: string;
 }
 
@@ -20,7 +20,7 @@ export interface RetrievedFact {
 export interface ProvenanceHistorianOutput {
   contextual_notes: string;
   cited_evidence: RetrievedFact[];
-  risk_level: 'low' | 'moderate' | 'red_flag';
+  risk_level: 'low' | 'moderate' | 'red_flag' | 'cannot_determine_insufficient_object_data';
 }
 
 export interface ConservativeAppraiserOutput {
@@ -74,11 +74,13 @@ export interface AnalyzeResponse {
   provenance_historian: ProvenanceHistorianOutput;
   provenance_synthesis_summary: string;
   provenance_requires_human_review: boolean;
+  provenance_evidence_scope: 'specific_object' | 'artist_general';
   conservative_appraiser: ConservativeAppraiserOutput;
   bullish_specialist: BullishSpecialistOutput;
   valuation_corridor: ValuationCorridor;
   corridor_summary: string;
   valuation_requires_human_review: boolean;
+  valuation_evidence_scope: 'specific_object' | 'artist_general';
   curator_auction_house: CuratorVariantOutput;
   curator_public_gallery: CuratorVariantOutput;
   provenance_evidence_sample: EvidenceItemDisplay[];
