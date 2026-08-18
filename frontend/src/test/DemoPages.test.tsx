@@ -46,23 +46,35 @@ describe('PipelineExplainer (one-page auto-play)', () => {
     vi.useRealTimers();
   });
 
-  function renderExplainer() {
+  function renderExplainer(mode: 'short' | 'long' = 'short') {
     return render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[`/demo/explainer?mode=${mode}`]}>
         <PipelineExplainer />
       </MemoryRouter>
     );
   }
 
-  it('renders all seven segments on one page', () => {
-    renderExplainer();
+  it('renders all eight segments on one page (long mode)', () => {
+    renderExplainer('long');
     expect(screen.getByText('Introduction')).toBeInTheDocument();
+    expect(screen.getByText('Built with Kiro')).toBeInTheDocument();
     expect(screen.getByText('Visual Art Historian')).toBeInTheDocument();
     expect(screen.getByText('Compliance Auditor')).toBeInTheDocument();
     expect(screen.getByText('Provenance Historian')).toBeInTheDocument();
     expect(screen.getByText('Conservative Appraiser')).toBeInTheDocument();
     expect(screen.getByText('Bullish Specialist')).toBeInTheDocument();
     expect(screen.getByText('Curator')).toBeInTheDocument();
+  });
+
+  it('renders only short-form segments by default', () => {
+    renderExplainer();
+    expect(screen.getByText('Introduction')).toBeInTheDocument();
+    expect(screen.getByText('Built with Kiro')).toBeInTheDocument();
+    expect(screen.getByText('Compliance Auditor')).toBeInTheDocument();
+    expect(screen.getByText('Provenance Historian')).toBeInTheDocument();
+    expect(screen.queryByText('Visual Art Historian')).not.toBeInTheDocument();
+    expect(screen.queryByText('Conservative Appraiser')).not.toBeInTheDocument();
+    expect(screen.queryByText('Curator')).not.toBeInTheDocument();
   });
 
   it('first segment is active on load (highlighted)', () => {
@@ -73,7 +85,8 @@ describe('PipelineExplainer (one-page auto-play)', () => {
 
   it('pending segments are dimmed', () => {
     renderExplainer();
-    const lastSegment = screen.getByTestId('segment-curator');
+    // In short mode, last segment is provenance_historian — it's pending on load
+    const lastSegment = screen.getByTestId('segment-provenance_historian');
     expect(lastSegment.className).toContain('opacity-40');
   });
 
@@ -83,8 +96,8 @@ describe('PipelineExplainer (one-page auto-play)', () => {
     // Need to flush promise microtasks then advance timer
     await act(async () => { await Promise.resolve(); });
     act(() => { vi.advanceTimersByTime(8200); });
-    // Second segment (Visual Art Historian) should now be active
-    const secondSegment = screen.getByTestId('segment-visual_art_historian');
+    // Second segment in short mode is built_with_kiro
+    const secondSegment = screen.getByTestId('segment-built_with_kiro');
     expect(secondSegment.className).toContain('border-indigo-400');
   });
 
@@ -110,22 +123,21 @@ describe('PipelineExplainer (one-page auto-play)', () => {
     await act(async () => { await Promise.resolve(); });
     // Advance past fallback
     act(() => { vi.advanceTimersByTime(8200); });
-    // Should have advanced to Visual Art Historian
-    const secondSegment = screen.getByTestId('segment-visual_art_historian');
+    // Should have advanced to built_with_kiro (second in short mode)
+    const secondSegment = screen.getByTestId('segment-built_with_kiro');
     expect(secondSegment.className).toContain('border-indigo-400');
   });
 
   it('manual skip via persona dots changes active segment', () => {
     renderExplainer();
-    // Click the Curator dot (last one - "C")
+    // In short mode, segments are: Intro, Compliance Auditor, Provenance Historian
+    // Click the last dot (Provenance Historian - initials "PH")
     const dots = screen.getAllByRole('button').filter(
-      btn => btn.textContent === 'C'
+      btn => btn.textContent === 'PH'
     );
-    // The Curator dot has initials "C"
-    const curatorDot = dots[dots.length - 1];
-    fireEvent.click(curatorDot);
-    const curatorSegment = screen.getByTestId('segment-curator');
-    expect(curatorSegment.className).toContain('border-indigo-400');
+    fireEvent.click(dots[dots.length - 1]);
+    const lastSegment = screen.getByTestId('segment-provenance_historian');
+    expect(lastSegment.className).toContain('border-indigo-400');
   });
 
   it('shows the runtime explanation note', () => {
@@ -135,8 +147,8 @@ describe('PipelineExplainer (one-page auto-play)', () => {
 
   it('shows real pipeline log entries', () => {
     renderExplainer();
-    // First segment (visual_art_historian) should show its log
-    expect(screen.getByText('Analyzing artwork...')).toBeInTheDocument();
+    // Log entries section header should be present (segments with logs show it)
+    expect(screen.getAllByText('Real pipeline log entries').length).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -11,7 +11,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AnalyzeResponse } from '../types/api';
-import { NARRATION_PLAYBACK_RATE } from '../api/client';
+import { NARRATION_PLAYBACK_RATE, SHORT_FORM_RESULTS_DURATION_MULTIPLIER } from '../api/client';
+import { useDemoMode, DemoModeToggle } from './useDemoMode';
 import ResultsView from '../components/ResultsView';
 import GlossaryText from '../components/GlossaryText';
 import goldenResult from '../data/golden-result.json';
@@ -140,6 +141,7 @@ const TOUR_STEPS: TourStep[] = [
 const GOLDEN_IMAGE_URL = '/golden-result-image.jpg';
 
 export default function ResultsWalkthrough() {
+  const [demoMode, setDemoMode] = useDemoMode();
   const result = goldenResult as unknown as AnalyzeResponse;
   const provenanceCaption = getProvenancePrimaryCaption(result);
   const valuationCaption = getValuationCaption(result);
@@ -185,10 +187,9 @@ export default function ResultsWalkthrough() {
       if (!audio || audioErrors.has(index)) {
         // No audio — use fallback timer
         clearFallback();
-        fallbackTimerRef.current = setTimeout(
-          advanceToNext,
-          TOUR_STEPS[index].fallbackDurationMs
-        );
+        const duration = TOUR_STEPS[index].fallbackDurationMs *
+          (demoMode === 'short' ? SHORT_FORM_RESULTS_DURATION_MULTIPLIER : 1);
+        fallbackTimerRef.current = setTimeout(advanceToNext, duration);
         return;
       }
 
@@ -199,10 +200,9 @@ export default function ResultsWalkthrough() {
         playPromise.catch(() => {
           setAudioErrors((prev) => new Set(prev).add(index));
           clearFallback();
-          fallbackTimerRef.current = setTimeout(
-            advanceToNext,
-            TOUR_STEPS[index].fallbackDurationMs
-          );
+          const dur = TOUR_STEPS[index].fallbackDurationMs *
+            (demoMode === 'short' ? SHORT_FORM_RESULTS_DURATION_MULTIPLIER : 1);
+          fallbackTimerRef.current = setTimeout(advanceToNext, dur);
         });
       }
     },
@@ -301,6 +301,7 @@ export default function ResultsWalkthrough() {
               <Link to="/app" className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
                 Try Live →
               </Link>
+              <DemoModeToggle mode={demoMode} onChange={setDemoMode} />
             </div>
           </div>
 
@@ -374,6 +375,7 @@ export default function ResultsWalkthrough() {
           result={result}
           onReset={() => {}}
           imageUrl={GOLDEN_IMAGE_URL}
+          compact={true}
         />
       </main>
     </div>

@@ -8,9 +8,10 @@
  * Clickable persona dots allow manual skip-to-persona.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ProgressEntry, NARRATION_PLAYBACK_RATE } from '../api/client';
+import { ProgressEntry, NARRATION_PLAYBACK_RATE, SHORT_FORM_EXPLAINER_SEGMENTS } from '../api/client';
+import { useDemoMode, DemoModeToggle } from './useDemoMode';
 import goldenLogs from '../data/golden-result-logs.json';
 
 // ---------------------------------------------------------------------------
@@ -31,8 +32,16 @@ const SEGMENTS: PersonaSegment[] = [
     name: 'Introduction',
     audioFile: '/audio/intro.wav',
     caption:
-      "A gallery or auction house can spend hundreds of hours on a single piece — tracing ownership, checking for red flags, defending a price — before they'll commit to a claim. Artgents does that research in 60 to 90 seconds — real calls to Vertex AI, Wikidata, the Met and Art Institute of Chicago APIs, and Parallel Search. Because that's too long to watch live, I'm walking through the architecture first, then showing a completed run. It uses two independently-reasoning agents at each contested step — not one averaged verdict.",
-    logFilter: () => false, // No pipeline log entries for intro
+      "A gallery or auction house can spend hundreds of hours on a single piece — tracing ownership, checking for red flags, defending a price. Artgents does that research in 60 to 90 seconds — real calls to Vertex AI, Wikidata, and public museum archives. Here's how it works, then a completed run. Two independently-reasoning agents debate each contested step — not one averaged verdict.",
+    logFilter: () => false,
+  },
+  {
+    key: 'built_with_kiro',
+    name: 'Built with Kiro',
+    audioFile: '/audio/built_with_kiro.wav',
+    caption:
+      "Every agent was built through Kiro's spec workflow — requirements, design, and tasks, all in .kiro/specs/. These weren't written once and forgotten: real testing found a cross-object data bug in the provenance agent, the spec was updated with the fix, and that same fix was built into the next agent from day one — instead of being rediscovered there too.",
+    logFilter: () => false,
   },
   {
     key: 'visual_art_historian',
@@ -106,8 +115,16 @@ const FALLBACK_DURATION_MS = 8000;
 // ---------------------------------------------------------------------------
 
 export default function PipelineExplainer() {
+  const [demoMode, setDemoMode] = useDemoMode();
+  const activeSegments = useMemo(
+    () => demoMode === 'short'
+      ? SEGMENTS.filter((s) => SHORT_FORM_EXPLAINER_SEGMENTS.includes(s.key))
+      : SEGMENTS,
+    [demoMode]
+  );
+
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true); // auto-play on by default
+  const [isPlaying, setIsPlaying] = useState(true);
   const [audioErrors, setAudioErrors] = useState<Set<number>>(new Set());
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -126,7 +143,7 @@ export default function PipelineExplainer() {
   const advanceToNext = useCallback(() => {
     clearFallback();
     setActiveIndex((prev) => {
-      if (prev < SEGMENTS.length - 1) {
+      if (prev < activeSegments.length - 1) {
         return prev + 1;
       }
       // Last segment — don't change index, trigger navigation separately
@@ -158,7 +175,7 @@ export default function PipelineExplainer() {
       if (!audio || audioErrors.has(index)) {
         // No audio available — use fallback timer
         clearFallback();
-        const onFallback = index === SEGMENTS.length - 1
+        const onFallback = index === activeSegments.length - 1
           ? () => setLastSegmentDone(true)
           : advanceToNext;
         fallbackTimerRef.current = setTimeout(onFallback, FALLBACK_DURATION_MS);
@@ -173,7 +190,7 @@ export default function PipelineExplainer() {
           // Autoplay blocked or failed — use fallback timer
           setAudioErrors((prev) => new Set(prev).add(index));
           clearFallback();
-          const onFallback = index === SEGMENTS.length - 1
+          const onFallback = index === activeSegments.length - 1
             ? () => setLastSegmentDone(true)
             : advanceToNext;
           fallbackTimerRef.current = setTimeout(onFallback, FALLBACK_DURATION_MS);
@@ -198,7 +215,7 @@ export default function PipelineExplainer() {
   const handleAudioEnded = useCallback(
     (index: number) => {
       if (index === activeIndex && isPlaying) {
-        if (activeIndex === SEGMENTS.length - 1) {
+        if (activeIndex === activeSegments.length - 1) {
           setLastSegmentDone(true);
         } else {
           advanceToNext();
@@ -258,12 +275,13 @@ export default function PipelineExplainer() {
               <Link to="/demo/results" className="text-xs text-gray-500 hover:text-gray-700">
                 Skip to Results →
               </Link>
+              <DemoModeToggle mode={demoMode} onChange={setDemoMode} />
             </div>
           </div>
 
           {/* Persona navigation dots */}
           <div className="flex items-center justify-center gap-1">
-            {SEGMENTS.map((seg, i) => (
+            {activeSegments.map((seg, i) => (
               <button
                 key={seg.key}
                 onClick={() => skipTo(i)}
@@ -292,16 +310,22 @@ export default function PipelineExplainer() {
         </div>
 
         {/* All six segments rendered on one page */}
-        {SEGMENTS.map((segment, index) => {
+        {activeSegments.map((segment, index) => {
           const isActive = index === activeIndex;
           const isComplete = index < activeIndex;
           const logs = (goldenLogs as ProgressEntry[]).filter(segment.logFilter);
 
           return (
-            <div
-              key={segment.key}
-              ref={(el) => { sectionRefs.current[index] = el; }}
-              data-testid={`segment-${segment.key}`}
+            <div key={segment.key}>
+              {/* Preface note before provenance pair in short mode */}
+              {demoMode === 'short' && segment.key === 'compliance_auditor' && (
+                <div className="mb-3 text-center text-sm text-gray-500 italic">
+                  All six agents narrate their role the same way — here's the pair that matters most
+                </div>
+              )}
+              <div
+                ref={(el) => { sectionRefs.current[index] = el; }}
+                data-testid={`segment-${segment.key}`}
               className={`rounded-xl border-2 p-6 transition-all duration-500 ${
                 isActive
                   ? 'border-indigo-400 bg-white shadow-lg ring-2 ring-indigo-200'
@@ -362,6 +386,7 @@ export default function PipelineExplainer() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           );
         })}

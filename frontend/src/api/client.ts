@@ -1,7 +1,7 @@
 import { AnalyzeResponse } from '../types/api';
 
 // ---------------------------------------------------------------------------
-// Narration playback configuration (centralized)
+// Demo mode configuration (centralized)
 // ---------------------------------------------------------------------------
 
 /**
@@ -9,7 +9,25 @@ import { AnalyzeResponse } from '../types/api';
  * 1.0 = normal, 0.8 = slower, 1.2 = 20% faster, etc.
  * Applies to both PipelineExplainer and ResultsWalkthrough audio.
  */
-export const NARRATION_PLAYBACK_RATE = 1.3;
+export const NARRATION_PLAYBACK_RATE = 1.5;
+
+export type DemoMode = 'short' | 'long';
+
+/**
+ * Short-form: only plays intro + compliance auditor + provenance historian
+ * in the explainer (skips visual art historian, appraisers, curator, built-with-kiro).
+ * Results walkthrough uses shorter durations.
+ *
+ * Long-form: plays all 8 segments in the explainer, full durations in results.
+ */
+export const SHORT_FORM_EXPLAINER_SEGMENTS: string[] = [
+  'intro',
+  'built_with_kiro',
+  'compliance_auditor',
+  'provenance_historian',
+];
+
+export const SHORT_FORM_RESULTS_DURATION_MULTIPLIER = 0.6;
 
 // ---------------------------------------------------------------------------
 

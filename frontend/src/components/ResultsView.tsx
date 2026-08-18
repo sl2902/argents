@@ -12,9 +12,18 @@ interface ResultsViewProps {
   result: AnalyzeResponse;
   onReset: () => void;
   imageUrl: string | null;
+  compact?: boolean;
 }
 
-export default function ResultsView({ result, onReset, imageUrl }: ResultsViewProps) {
+/** Truncate text to the first N sentences, appending "…" if shortened. */
+function truncateToSentences(text: string, maxSentences: number): string {
+  // Split on sentence-ending punctuation followed by whitespace
+  const sentences = text.match(/[^.!?]*[.!?]+/g);
+  if (!sentences || sentences.length <= maxSentences) return text;
+  return sentences.slice(0, maxSentences).join('').trimEnd() + ' …';
+}
+
+export default function ResultsView({ result, onReset, imageUrl, compact = false }: ResultsViewProps) {
   const [variant, setVariant] = useState<'auction_house' | 'public_gallery'>('public_gallery');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const curatorOutput = variant === 'auction_house' ? result.curator_auction_house : result.curator_public_gallery;
@@ -136,11 +145,13 @@ export default function ResultsView({ result, onReset, imageUrl }: ResultsViewPr
           title="Provenance Sources"
           items={result.provenance_evidence_sample}
           totalCount={result.total_provenance_facts}
+          compact={compact}
         />
         <EvidenceList
           title="Valuation Comparables"
           items={result.valuation_evidence_sample}
           totalCount={result.total_valuation_comps}
+          compact={compact}
         />
       </div>
 
@@ -154,7 +165,7 @@ export default function ResultsView({ result, onReset, imageUrl }: ResultsViewPr
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-2">Exhibition Narrative</h4>
           <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-            <GlossaryText text={curatorOutput.exhibition_narrative} />
+            <GlossaryText text={compact ? truncateToSentences(curatorOutput.exhibition_narrative, 3) : curatorOutput.exhibition_narrative} />
           </p>
         </div>
 

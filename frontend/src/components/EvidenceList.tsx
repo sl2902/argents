@@ -4,9 +4,17 @@ interface EvidenceListProps {
   title: string;
   items: EvidenceItemDisplay[];
   totalCount: number;
+  compact?: boolean;
 }
 
-export default function EvidenceList({ title, items, totalCount }: EvidenceListProps) {
+const COMPACT_MAX_LENGTH = 100;
+
+function truncateDescription(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen - 1).trimEnd() + '…';
+}
+
+export default function EvidenceList({ title, items, totalCount, compact = false }: EvidenceListProps) {
   if (!items.length) return null;
 
   return (
@@ -23,7 +31,9 @@ export default function EvidenceList({ title, items, totalCount }: EvidenceListP
             <span className="inline-block px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-mono shrink-0">
               {item.source_type}
             </span>
-            <span className="text-gray-600 flex-1">{item.description}</span>
+            <span className="text-gray-600 flex-1">
+              {compact ? truncateDescription(item.description, COMPACT_MAX_LENGTH) : item.description}
+            </span>
             <a
               href={item.source_url}
               target="_blank"
