@@ -61,14 +61,19 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "frontend" / "public" / "a
 
 NARRATIONS: dict[str, str] = {
     "intro": (
-        "[warm, confident] A gallery or auction house can spend hundreds of hours on a single piece "
-        "- tracing ownership, checking for red flags, defending a price "
-        "- before they'll commit to a claim. "
-        "Artgents does that research in 60 to 90 seconds - real calls to Vertex AI, Wikidata, "
-        "the Met and Art Institute of Chicago APIs, and Parallel Search. "
-        "Because that's too long to watch live, I'm walking through the architecture first, "
-        "then showing a completed run. It uses two independently-reasoning agents at "
-        "each contested step - not one averaged verdict."
+       "[warm, confident] A gallery or auction house can spend hundreds of hours on a single piece "
+        "- tracing ownership, checking for red flags, defending a price. "
+        "Artgents does that research in 60 to 90 seconds - calls to Vertex AI "
+        "and public museum archives. Here's how it works, then a completed run. "
+        "Two independently-reasoning agents debate each contested step - not one averaged verdict."
+    ),
+    "built_with_kiro": (
+        "[warm, clear] Every agent was built through Kiro's spec workflow - "
+        "requirements, design, and tasks, all in .kiro/specs/. "
+        "[short pause] These weren't written once and forgotten: real testing "
+        "found a cross-object data bug in the provenance agent, the spec was "
+        "updated with the fix, and that same fix was built into the next agent "
+        "from day one - instead of being rediscovered there too."
     ),
     "visual_art_historian": (
         "[measured] I'm the first to look at the piece. I study the "
@@ -121,6 +126,7 @@ NARRATIONS: dict[str, str] = {
 
 VOICES: dict[str, str] = {
     "intro": "Kore",                       # Narrator/bookend tone (same as curator)
+    "built_with_kiro": "Kore",             # Same narrator voice (framing segment)
     "visual_art_historian": "Aoede",       # Clear, measured, analytical
     "compliance_auditor": "Charon",        # Firm, lower register, terse
     "provenance_historian": "Leda",        # Warmer, more explanatory
@@ -172,7 +178,7 @@ RESULTS_NARRATIONS: dict[str, str] = {
         "public gallery. Both correctly state that object-specific provenance "
         "research is still needed — that language wasn't optional. The "
         "disclosure floor guarantees it appears regardless of how the "
-        "narrative reads."
+        "narrative reads. [pause] Thank you."
     ),
     "results_evidence": (
         "Every factual claim in the analysis carries a real, clickable source "
