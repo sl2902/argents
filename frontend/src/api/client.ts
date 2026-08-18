@@ -9,7 +9,7 @@ import { AnalyzeResponse } from '../types/api';
  * 1.0 = normal, 0.8 = slower, 1.2 = 20% faster, etc.
  * Applies to both PipelineExplainer and ResultsWalkthrough audio.
  */
-export const NARRATION_PLAYBACK_RATE = 1.5;
+export const NARRATION_PLAYBACK_RATE = 1.6;
 
 export type DemoMode = 'short' | 'long';
 
