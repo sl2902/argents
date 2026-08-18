@@ -32,7 +32,7 @@ const SEGMENTS: PersonaSegment[] = [
     name: 'Introduction',
     audioFile: '/audio/intro.wav',
     caption:
-      "A gallery or auction house can spend hundreds of hours on a single piece — tracing ownership, checking for red flags, defending a price. Artgents does that research in 60 to 90 seconds — real calls to Vertex AI, Wikidata, and public museum archives. Here's how it works, then a completed run. Two independently-reasoning agents debate each contested step — not one averaged verdict.",
+      "A gallery or auction house can spend hundreds of hours on a single piece — tracing ownership, checking for red flags, defending a price. Artgents does that research in 60 to 90 seconds — calls to Vertex AI and public museum archives. Here's how it works, then a completed run. Two independently-reasoning agents debate each contested step — not one averaged verdict.",
     logFilter: () => false,
   },
   {
