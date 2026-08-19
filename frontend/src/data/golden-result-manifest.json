@@ -3,7 +3,7 @@
   "captured_date": "2026-08-17",
   "job_id": "N/A - direct pipeline call, not via API job queue",
   "test_input": {
-    "image": "Met object 459133 - The Adoration of the Magi (Follower of Giotto)",
+    "image": "Met object 459133 - The Adoration of the Magi (Follower of Giotto) https://www.metmuseum.org/art/collection/search/459133",
     "known_artist": "Gentile da Fabriano"
   },
   "why_selected": "Both sub-agents independently reach 'cannot_determine_insufficient_object_data' - a genuine, real demonstration of the provenance calibration work: rather than forcing a guess (as earlier versions of this system did, defaulting to 'moderate'), both agents correctly recognize that the retrieved evidence (real Wikidata history including Fuhrermuseum / Munich Central Collecting Point involvement for a different specific work by this artist) cannot be tied to the specific object being assessed, and say so explicitly - grounded in real AAM/AAMD museum provenance-review practice, not an arbitrary default. This is the primary demo moment for this result: not agent disagreement, but honest recognition of the limits of available evidence. The valuation corridor ($50,000-$125,000) is real but modest in spread; it is not the primary showcase moment for this particular golden result."
