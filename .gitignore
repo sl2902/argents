@@ -1,3 +1,6 @@
 .env
 **/__pycache__/*
 *.egg-info
+cannot_determine_output.txt
+golden*.json
+test_*.py

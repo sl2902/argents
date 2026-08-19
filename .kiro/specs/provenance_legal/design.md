@@ -122,7 +122,8 @@ class EvidenceBundle(BaseModel):
 
 class ComplianceAuditorOutput(BaseModel):
     identified_gaps: list[OwnershipGap]  # window, is_high_risk_period: bool
-    risk_level: Literal["low", "moderate", "red_flag"]
+    risk_level: Literal["low", "moderate", "red_flag",
+                         "cannot_determine_insufficient_object_data"]
     reasoning: str
 
 class ProvenanceHistorianOutput(BaseModel):
@@ -131,7 +132,8 @@ class ProvenanceHistorianOutput(BaseModel):
                                           # contextual_notes, in EITHER
                                           # direction — not limited to
                                           # exculpatory evidence
-    risk_level: Literal["low", "moderate", "red_flag"]
+    risk_level: Literal["low", "moderate", "red_flag",
+                         "cannot_determine_insufficient_object_data"]
 
 class TitleRiskMatrix(BaseModel):
     compliance_auditor: ComplianceAuditorOutput
@@ -159,6 +161,23 @@ async def assess_provenance(search_keys: ProvenanceSearchKeys) -> TitleRiskMatri
     )
     return synthesize_title_risk(auditor_result, historian_result, bundle)
 ```
+
+## Prompt guidance: when to use cannot_determine_insufficient_object_data
+
+Both sub-agent prompts must explicitly instruct: when
+`evidence_scope == "artist_general"` and the retrieved evidence cannot
+be tied to the specific object being assessed (no shared
+`source_entity_id`, no title match), the correct `risk_level` is
+`"cannot_determine_insufficient_object_data"` — not a forced guess at
+`low`/`moderate`/`red_flag`. Ground this in the same logic real museum
+provenance review uses (per AAM/AAMD guidelines): risk assessment
+requires knowing whether THIS object meets specific criteria (created
+pre-1946, acquired post-1932, changed hands 1933-1945, plausibly in
+continental Europe) — without that object-specific data, the honest
+answer is that the standard test cannot be applied, not a comfortable
+default. This applies independently to each sub-agent; one may reach
+this state while the other has grounds for a real judgment (e.g. if
+literally every retrieved work by the artist shares one clear pattern).
 
 ## Model call configuration
 
@@ -223,12 +242,23 @@ transport + parsing).
 `synthesize_title_risk()` is deliberately NOT an LLM call — it's plain
 Python logic that:
 - Sets `requires_human_review = True` if `risk_level` differs between
-  the two sub-agents, OR either is `"red_flag"`
+  the two sub-agents, OR either is `"red_flag"`, OR either is
+  `"cannot_determine_insufficient_object_data"` — the last case is
+  inherently review-worthy: "the system can't answer this without more
+  information" is not a clean, safe-to-skip result, even though it
+  isn't a red_flag either.
 - Writes `synthesis_summary` by comparing the two `risk_level` values
   and stating explicitly whether they agree or disagree — this can be
   simple templated text, not a third model call, to avoid introducing
   a third opinion that muddies rather than clarifies the two-agent
-  contrast
+  contrast. When either sub-agent's `risk_level` is
+  `"cannot_determine_insufficient_object_data"`, the summary states
+  this plainly and distinctly from a disagreement — e.g. "One or both
+  assessments could not be completed without object-specific data;
+  standard due-diligence practice (see AAM/AAMD guidelines) would
+  require further research before this question can be answered" —
+  rather than folding it into the same phrasing used for a genuine
+  risk_level disagreement between two completed assessments.
 
 ## Error handling
 
@@ -240,6 +270,29 @@ Python logic that:
 - If Parallel Search account credit is exhausted → typed error,
   surfaced clearly (not silently treated as "no results found") since
   those are different situations for a caller to handle
+
+## Downstream impact — flagged for follow-up, not handled in this spec
+
+This schema change ripples beyond this agent:
+- **API layer** (`AnalyzeResponse`): `compliance_auditor`/
+  `provenance_historian` risk_level fields need to accept the new
+  literal value — check `response_models.py` reuses the real
+  `ComplianceAuditorOutput`/`ProvenanceHistorianOutput` types directly
+  (per the API design's existing convention) rather than redeclaring
+  the enum, so this may already propagate automatically; confirm
+  rather than assume.
+- **Frontend** (`DualAgentCard`): currently has three risk-level badge
+  states (low/moderate/red_flag styling). Needs a fourth visual state
+  for `cannot_determine_insufficient_object_data` — distinct from all
+  three existing colors, since it's not "safe" (low), not "concerning"
+  (moderate/red_flag), but "unanswerable without more data." A neutral
+  color (e.g. grey/blue) with explanatory copy is more honest than
+  forcing it into the existing red/amber/green-style spectrum.
+- **Curator**: the disclosure-floor logic already keys off
+  `requires_human_review`, which this change correctly sets — no
+  Curator-side schema change needed, but worth confirming its prompt
+  doesn't mischaracterize a `cannot_determine` state as if it were a
+  `moderate` finding when narrating.
 
 ## Testing approach
 

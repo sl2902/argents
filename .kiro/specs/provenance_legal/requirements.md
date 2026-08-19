@@ -94,6 +94,49 @@ This agent is not a single reasoning step. It has two stages:
 - `requires_human_review`: bool — true whenever the two sub-agents
   disagree on `risk_level`, or either flags "red_flag"
 
+## Real-world grounding: when the standard test can't be applied
+
+Museum practice (per AAM/AAMD Nazi-era provenance guidelines, in place
+since 1998-99) doesn't assess risk by how alarming general historical
+context feels. It uses a mechanical, OBJECT-SPECIFIC test: was this
+specific object created before 1946, acquired by the current holder
+after 1932, did it change hands 1933-1945, and was it plausibly in
+continental Europe during that window? If a work meets that test, it's
+a "covered object" requiring active research and disclosure - full
+stop, regardless of how normal provenance gaps are for old art in
+general. If a work CANNOT be evaluated against that test - which is
+exactly the `evidence_scope: "artist_general"` case, where there's no
+way to know if this specific piece was even in Europe in 1933-1945 -
+the honest, professionally-grounded answer isn't "probably fine" or
+"moderate risk." It's that the standard test cannot be applied without
+object-specific data, and the same AAM/AAMD-style guidelines would
+recommend active research before the question can be answered at all.
+
+Forcing every case into `low`/`moderate`/`red_flag` was itself
+dishonest in `artist_general` mode - it implied a risk judgment was
+being made when the real, correct answer is that no judgment can be
+made yet. `risk_level` gains a fourth value:
+`"cannot_determine_insufficient_object_data"`.
+
+- Used ONLY in `evidence_scope: "artist_general"` mode, when the
+  retrieved evidence describes the artist's body of work in general
+  and cannot be tied to the specific object being assessed.
+- Both sub-agents may independently reach this state - it isn't
+  something only one persona can express. A sub-agent should use it
+  instead of a forced `low`/`moderate`/`red_flag` guess whenever it
+  genuinely cannot ground a risk judgment in object-specific evidence.
+- When either sub-agent reaches this state, `requires_human_review`
+  is automatically `true` in synthesis - "we can't determine this
+  without more information" is inherently review-worthy, not a
+  clean "low risk" result.
+- `reasoning`/`contextual_notes` must explicitly say so in plain
+  language - e.g. "Standard object-specific provenance review (per
+  museum due-diligence practice) requires knowing whether this
+  specific piece changed hands during 1933-1945 and was in continental
+  Europe at the time. That information isn't available from a
+  general artist-level search. Object-specific research is needed
+  before this question can be answered."
+
 ## Acceptance criteria
 
 - Every claim in `retrieved_facts` carries a real, working `source_url`
@@ -125,9 +168,17 @@ This agent is not a single reasoning step. It has two stages:
 - A `red_flag` risk_level in `"artist_general"` mode is only used when
   there is truly no way to express appropriate uncertainty otherwise
   (e.g. every documented work by this artist has a plunder history) —
-  the default framing for unmatched artist-general evidence should
-  favor "moderate, cannot confirm this specific piece" over a
-  confident red_flag phrased as if it's a specific-object finding.
+  the default for genuinely unmatched artist-general evidence, where
+  neither sub-agent can ground a judgment in object-specific data, is
+  `"cannot_determine_insufficient_object_data"`, not a confident
+  `red_flag` OR a falsely-comfortable `moderate`/`low` phrased as if
+  it's a specific-object finding. `moderate`/`low`/`red_flag` remain
+  available in `artist_general` mode only when the sub-agent has a
+  genuine, stated basis for that judgment even without object-specific
+  data (e.g. every single retrieved work by the artist shares the same
+  clean or same alarming pattern) — the new state is for the common
+  case where the evidence is simply too disconnected from the specific
+  object to support any risk judgment at all.
 - Neither sub-agent asserts a theft/plunder flag without a citable
   `source_url` in `retrieved_facts` backing it.
 - Any fact dropped during retrieval due to a malformed/invalid

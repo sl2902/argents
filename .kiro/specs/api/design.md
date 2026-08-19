@@ -204,6 +204,7 @@ class AnalyzeResponse(BaseModel):
     provenance_historian: ProvenanceHistorianOutput
     provenance_synthesis_summary: str
     provenance_requires_human_review: bool
+    provenance_evidence_scope: Literal["specific_object", "artist_general"]
 
     # Valuation — both sub-agents
     conservative_appraiser: ConservativeAppraiserOutput
@@ -211,6 +212,7 @@ class AnalyzeResponse(BaseModel):
     valuation_corridor: ValuationCorridor
     corridor_summary: str
     valuation_requires_human_review: bool
+    valuation_evidence_scope: Literal["specific_object", "artist_general"]
 
     # Curator — BOTH variants, no request-time selection needed
     curator_auction_house: CuratorOutputDisplay

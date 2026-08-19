@@ -153,6 +153,13 @@ background task even starts).
   once complete) directly exposes `compliance_auditor`/
   `provenance_historian` and `conservative_appraiser`/
   `bullish_specialist` as distinct objects.
+- Response exposes `provenance_evidence_scope` and
+  `valuation_evidence_scope` (each `"specific_object"` or
+  `"artist_general"`) — a consumer needs this to correctly frame
+  whether retrieved evidence is about the specific artwork being
+  assessed or the artist's body of work in general; without it, a
+  serious historical reference (e.g. documented plunder history) could
+  be misread as a claim about the tested piece itself when it isn't.
 - Response includes per-stage timing with concurrency visible (stage 2
   duration is NOT simply the sum of both agents' individual
   durations).
