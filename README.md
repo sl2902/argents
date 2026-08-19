@@ -115,6 +115,41 @@ alongside each individual agent's own duration.
 
 ---
 
+## Usage for Judges
+ 
+1. Open the deployed app (or `npm run dev` locally — see
+   [Local development](#local-development)).
+2. Upload one or more photos of a physical artwork (drag-and-drop or
+   click to browse).
+2a.(Test image)[https://images.metmuseum.org/CRDImages/rl/web-large/DP-25504-001.jpg]
+   was used durin development and testing.
+3. Optionally fill in any known metadata — title, artist, period,
+   medium — if you have it. Leave any field blank if you don't; the
+   system is designed to work from the image alone.
+4. Click **Analyze Artwork**. A real analysis takes **60-90+ seconds**
+   — the loading view shows real, live substep progress (not a fake
+   timer) as each agent actually completes its work, including the
+   concurrent stage's genuine wall-clock time.
+5. On the results page:
+   - Read the attribution, style, and condition analysis.
+   - Compare the **Compliance Auditor** and **Provenance Historian**
+     cards side by side — a warning banner appears if they genuinely
+     disagree, or if neither can determine a risk level from the
+     available evidence.
+   - Compare the **Conservative Appraiser** and **Bullish Specialist**
+     cards, and the resulting valuation corridor.
+   - Toggle between **Auction House** and **Public Gallery** copy —
+     both are already computed, so this is instant.
+   - Click any evidence source link to verify the underlying claim
+     independently — every citation is a real, working URL.
+   - Hover over underlined technical terms for a plain-language
+     definition.
+6. A `/demo` route is also available, showing a guided walkthrough of
+   a real, pre-captured result with narrated explanation of each
+   agent's role — useful if you want to see the architecture explained
+   without waiting on a live run.
+---
+
 ## Tech stack
 
 | Layer | Technology |
@@ -241,9 +276,9 @@ npm run dev
 Set `VITE_API_URL` in `frontend/.env.local` to point at your local
 backend (`http://localhost:8080`) or the deployed Cloud Run URL.
 
-Backend environment variables needed: `GCP_PROJECT`, `GCP_LOCATION`,
-`PARALLEL_API_KEY`. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the
-full deployment walkthrough.
+Backend environment variables needed: `GOOGLE_APPLICATION_CREDENTIALS`, 
+`GCP_PROJECT`, `GCP_LOCATION`, `PARALLEL_WEB_API_KEY`. 
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the full deployment walkthrough.
 
 ## Testing
 
@@ -270,8 +305,52 @@ the "Testing approach" section explaining why.
 
 - **App:** [Artgents](https://artgents.vercel.app/)
 - **API health check:** [health-check](https://artgents-backend-305902429216.us-central1.run.app/api/health)
-- **Demo video:** _[link]_
+- **Demo video:** [Artgents-Demo](https://youtu.be/jIQe7OgtrzM)
 
-## License
+---
 
-_[fill in]_
+## Attribution
+ 
+**AI platform**
+- [Kiro](https://kiro.dev) — spec-driven development tool used to
+  build this entire project (see [Built with Kiro](#built-with-kiro)).
+- [Google Gemini 2.5 Flash](https://ai.google.dev/) via
+  [Vertex AI](https://cloud.google.com/vertex-ai) — all four agents'
+  reasoning, and the demo narration's text-to-speech generation.
+
+**APIs and data sources**
+- [Wikidata](https://www.wikidata.org/) — ownership history and
+  sale-price data, queried via its public SPARQL endpoint. Wikidata
+  content is available under the [Creative Commons CC0
+  license](https://creativecommons.org/publicdomain/zero/1.0/).
+- [The Metropolitan Museum of Art Open Access
+  API](https://metmuseum.github.io/) — museum provenance records.
+  Met Open Access data is released under
+  [CC0](https://www.metmuseum.org/about-the-met/policies-and-documents/open-access).
+- [Art Institute of Chicago API](https://api.artic.edu/docs/) —
+  museum provenance records, released under
+  [CC0](https://www.artic.edu/open-access).
+- [Parallel Search API](https://parallel.ai) — open web retrieval for
+  auction press coverage and public theft/plunder registries.
+
+**Backend frameworks and libraries**
+- [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/),
+  [uv](https://docs.astral.sh/uv/), [httpx](https://www.python-httpx.org/),
+  [loguru](https://github.com/Delgan/loguru), [uvicorn](https://www.uvicorn.org/) —
+  all open-source, used under their respective licenses (MIT/Apache
+  2.0 as applicable to each project).
+
+**Frontend frameworks and libraries**
+- [React](https://react.dev/), [Vite](https://vite.dev/),
+  [TypeScript](https://www.typescriptlang.org/),
+  [Tailwind CSS](https://tailwindcss.com/),
+  [react-router](https://reactrouter.com/) — all open-source, used
+  under their respective licenses (MIT as applicable to each project).
+
+**Deployment**
+- [Google Cloud Run](https://cloud.google.com/run) (backend),
+  [Vercel](https://vercel.com/) (frontend).
+
+No proprietary, paywalled, or restricted-access data source is used
+anywhere in this project — see [Real, open data — nothing
+simulated](#real-open-data--nothing-simulated).
