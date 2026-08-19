@@ -121,8 +121,9 @@ alongside each individual agent's own duration.
    [Local development](#local-development)).
 2. Upload one or more photos of a physical artwork (drag-and-drop or
    click to browse).
-2a.(Test image)[https://images.metmuseum.org/CRDImages/rl/web-large/DP-25504-001.jpg]
-   was used durin development and testing.
+  
+   *Test image used during development:*
+   [Adoration of the Magi, The Met](https://images.metmuseum.org/CRDImages/rl/web-large/DP-25504-001.jpg)
 3. Optionally fill in any known metadata — title, artist, period,
    medium — if you have it. Leave any field blank if you don't; the
    system is designed to work from the image alone.
