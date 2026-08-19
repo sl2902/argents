@@ -375,6 +375,7 @@ export default function ResultsWalkthrough() {
           result={result}
           onReset={() => {}}
           imageUrl={GOLDEN_IMAGE_URL}
+          imageCaption={{ text: 'Source: The Met, object 459133', href: 'https://www.metmuseum.org/art/collection/search/459133' }}
           compact={true}
         />
       </main>

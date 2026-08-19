@@ -12,6 +12,7 @@ interface ResultsViewProps {
   result: AnalyzeResponse;
   onReset: () => void;
   imageUrl: string | null;
+  imageCaption?: { text: string; href: string };
   compact?: boolean;
 }
 
@@ -23,7 +24,7 @@ function truncateToSentences(text: string, maxSentences: number): string {
   return sentences.slice(0, maxSentences).join('').trimEnd() + ' …';
 }
 
-export default function ResultsView({ result, onReset, imageUrl, compact = false }: ResultsViewProps) {
+export default function ResultsView({ result, onReset, imageUrl, imageCaption, compact = false }: ResultsViewProps) {
   const [variant, setVariant] = useState<'auction_house' | 'public_gallery'>('public_gallery');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const curatorOutput = variant === 'auction_house' ? result.curator_auction_house : result.curator_public_gallery;
@@ -37,12 +38,24 @@ export default function ResultsView({ result, onReset, imageUrl, compact = false
       {/* Header with thumbnail */}
       <div className="flex items-start gap-6">
         {imageUrl && (
-          <img
-            src={imageUrl}
-            alt="Analyzed artwork"
-            className="w-32 h-32 rounded-lg shadow-md object-cover shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
-            onClick={() => setLightboxOpen(true)}
-          />
+          <div className="shrink-0">
+            <img
+              src={imageUrl}
+              alt="Analyzed artwork"
+              className="w-32 h-32 rounded-lg shadow-md object-cover cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
+              onClick={() => setLightboxOpen(true)}
+            />
+            {imageCaption && (
+              <a
+                href={imageCaption.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mt-1 text-[10px] text-gray-500 hover:text-indigo-600 text-center"
+              >
+                {imageCaption.text}
+              </a>
+            )}
+          </div>
         )}
         <div className="flex-1">
           <div className="flex items-start justify-between">
