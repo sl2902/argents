@@ -242,7 +242,7 @@ and evidence-scoping behavior below.
 - **Parallel Search:** credit-based pricing; the account funding this
   deployment has promotional credit sufficient for the judging window.
 - **Wikidata, Met, AIC:** free, public, no auth, no rate-limit
-  concerns at this scale.
+  concerns at this scale. 429 errors are gracefully handled.
 
 ## Known limitations (explicit scope decisions, not oversights)
 
