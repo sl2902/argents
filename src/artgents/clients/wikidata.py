@@ -15,6 +15,8 @@ import httpx
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from artgents.clients.retry_utils import httpx_request_with_retry
+
 WIKIDATA_SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
 _USER_AGENT = (
@@ -112,12 +114,13 @@ class WikidataClient:
             httpx.HTTPStatusError: If the endpoint returns non-2xx.
         """
         query = self._ensure_limit(query)
-        response = await self._client.post(
+        response = await httpx_request_with_retry(
+            self._client,
+            "POST",
             WIKIDATA_SPARQL_ENDPOINT,
             data={"query": query},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        response.raise_for_status()
         return response.json()
 
     def _ensure_limit(self, query: str) -> str:

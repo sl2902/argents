@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 from loguru import logger
+
+from artgents.clients.retry_utils import httpx_request_with_retry
 from pydantic import BaseModel, Field
 
 MET_API_BASE = "https://collectionapi.metmuseum.org/public/collection/v1"
@@ -90,8 +92,9 @@ class MetClient:
         Raises:
             httpx.HTTPStatusError: If the API returns a non-2xx status.
         """
-        response = await self._client.get(f"/objects/{object_id}")
-        response.raise_for_status()
+        response = await httpx_request_with_retry(
+            self._client, "GET", f"/objects/{object_id}",
+        )
         return response.json()
 
     async def get_object(self, object_id: int) -> MetObject:
@@ -144,7 +147,8 @@ class MetClient:
             List of object IDs matching the query.
         """
         params: dict[str, Any] = {"q": query, "hasImages": has_images}
-        response = await self._client.get("/search", params=params)
-        response.raise_for_status()
+        response = await httpx_request_with_retry(
+            self._client, "GET", "/search", params=params,
+        )
         data = response.json()
         return data.get("objectIDs") or []

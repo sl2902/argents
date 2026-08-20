@@ -47,6 +47,15 @@
     attempting to use an object's image — do not assume every returned
     object has a downloadable image.
 - **Art Institute of Chicago API** — public REST/JSON, no auth required.
+- **Shared httpx retry utility** — Wikidata, Met, AIC, and Parallel
+  Search clients all make raw `httpx` calls and share the same
+  transient-failure risk (429 rate limits, observed for real against
+  Wikidata during testing). Rather than duplicating retry logic per
+  client, a single shared helper
+  (`src/artgents/clients/retry_utils.py`) wraps any httpx call with
+  exponential backoff on 429/connection errors — same pattern already
+  proven on the Vertex client, extracted into something reusable
+  rather than copy-pasted four times.
 - **Vertex AI client (`clients/vertex.py`)** — operational note,
   discovered during testing, applies to every agent using this shared
   client: the architecture makes concurrent calls by design (stage 2
@@ -75,5 +84,6 @@ parsing independent and easy to reason about per agent.
 
 ## Deployment
 
-- Backend: Cloud Run (existing known pattern from prior projects)
-- Frontend: Vercel
+- Backend: Cloud Run
+- Frontend: static/deployed alongside or separately, TBD in
+  `structure.md` / frontend spec

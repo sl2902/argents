@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 from loguru import logger
+
+from artgents.clients.retry_utils import httpx_request_with_retry
 from pydantic import BaseModel, Field
 
 AIC_API_BASE = "https://api.artic.edu/api/v1"
@@ -84,14 +86,15 @@ class AICClient:
                 has no image_id.
             httpx.HTTPStatusError: If the API returns a non-2xx status.
         """
-        response = await self._client.get(
+        response = await httpx_request_with_retry(
+            self._client,
+            "GET",
             f"/artworks/{object_id}",
             params={
                 "fields": "id,title,artist_display,date_display,medium_display,"
                 "provenance_text,is_public_domain,image_id"
             },
         )
-        response.raise_for_status()
         data = response.json().get("data", {})
         obj = AICObject.model_validate(data)
 
@@ -132,14 +135,15 @@ class AICClient:
         Raises:
             httpx.HTTPStatusError: If the API returns a non-2xx status.
         """
-        response = await self._client.get(
+        response = await httpx_request_with_retry(
+            self._client,
+            "GET",
             f"/artworks/{object_id}",
             params={
                 "fields": "id,title,artist_display,date_display,medium_display,"
                 "provenance_text,is_public_domain,image_id"
             },
         )
-        response.raise_for_status()
         data = response.json().get("data", {})
         return AICObject.model_validate(data)
 
@@ -153,10 +157,11 @@ class AICClient:
         Returns:
             List of artwork IDs matching the query.
         """
-        response = await self._client.get(
+        response = await httpx_request_with_retry(
+            self._client,
+            "GET",
             "/artworks/search",
             params={"q": query, "fields": "id", "limit": limit},
         )
-        response.raise_for_status()
         data = response.json().get("data", [])
         return [item["id"] for item in data if "id" in item]

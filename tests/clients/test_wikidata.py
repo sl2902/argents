@@ -438,8 +438,8 @@ class TestWikidataClientLimitInjection:
             "Query should not have hardcoded LIMIT — the client injects it"
         )
 
-    @patch("httpx.AsyncClient.post", new_callable=AsyncMock)
-    async def test_execute_sparql_receives_limited_query(self, mock_post):
+    @patch("httpx.AsyncClient.request", new_callable=AsyncMock)
+    async def test_execute_sparql_receives_limited_query(self, mock_request):
         """The actual SPARQL sent to the endpoint includes the injected LIMIT."""
         from unittest.mock import MagicMock
 
@@ -447,14 +447,15 @@ class TestWikidataClientLimitInjection:
         mock_response.status_code = 200
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"results": {"bindings": []}}
-        mock_post.return_value = mock_response
+        mock_request.return_value = mock_response
 
         async with WikidataClient(default_limit=50) as client:
             await client.query_provenance(artist="Claude Monet")
 
         # Check what query was actually sent via HTTP POST
-        call_kwargs = mock_post.call_args
+        call_kwargs = mock_request.call_args
         sent_data = call_kwargs.kwargs.get("data") or call_kwargs[1].get("data", {})
+        sent_query = sent_data.get("query", "")
         sent_query = sent_data.get("query", "")
         assert "LIMIT 50" in sent_query, f"Expected LIMIT 50 in query, got: {sent_query[-100:]}"
 

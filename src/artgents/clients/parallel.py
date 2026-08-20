@@ -72,13 +72,10 @@ class ParallelClient:
             parallel.APIError: For other API errors.
         """
         try:
-            response = await self._client.search(
-                search_queries=[query],
-                advanced_settings={"max_results": max_results},
-            )
+            response = await self._search_with_retry(query, max_results)
         except parallel.RateLimitError as exc:
             logger.error(
-                "Parallel Search credit exhausted or rate limited: {}", str(exc)
+                "Parallel Search credit exhausted or rate limited (retries exhausted): {}", str(exc)
             )
             raise CreditExhaustedError(
                 f"Parallel Search credits exhausted: {exc}"
@@ -104,6 +101,30 @@ class ParallelClient:
             )
 
         return ParallelSearchResult(hits=hits, query=query)
+
+    async def _search_with_retry(self, query: str, max_results: int):
+        """Execute search with retry on rate-limit errors (transient bursts)."""
+        import asyncio as _asyncio
+
+        max_retries = 3
+        initial_delay = 2.0
+
+        for attempt in range(max_retries + 1):
+            try:
+                return await self._client.search(
+                    search_queries=[query],
+                    advanced_settings={"max_results": max_results},
+                )
+            except parallel.RateLimitError:
+                if attempt < max_retries:
+                    delay = initial_delay * (2 ** attempt)
+                    logger.warning(
+                        "Parallel Search rate limited — retry {}/{} after {:.1f}s",
+                        attempt + 1, max_retries, delay,
+                    )
+                    await _asyncio.sleep(delay)
+                else:
+                    raise  # Retries exhausted — let caller handle
 
     async def close(self) -> None:
         """Close the underlying client."""
