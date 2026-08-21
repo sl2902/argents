@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # CORS: comma-separated list of allowed origins.
     # Default "*" is permissive for local dev; set to the actual frontend
     # origin in production (e.g. "https://artgents.vercel.app").
-    cors_allowed_origins: str = "*"
+    cors_allowed_origins: str = "http://localhost:5173,https://artgents.vercel.app"
 
     model_config = SettingsConfigDict(
         env_file=".env", 
